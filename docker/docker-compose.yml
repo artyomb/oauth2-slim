@@ -1,0 +1,18 @@
+services:
+  oauth2_slim:
+    image: ${REGISTRY_HOST}/oauth2-slim
+    build:
+      context: ../src_oauth2_slim
+      dockerfile: ../docker/ruby/Dockerfile
+      cache_from:
+        - type=gha,scope=src_oauth2_slim
+      cache_to:
+        - type=gha,scope=src_oauth2_slim,mode=max
+    volumes:
+    - "/var/run/docker.sock:/var/run/docker.sock:rw"
+    ports:
+      - 7000:7000
+    environment:
+      OTEL_LOG_LEVEL: debug
+      OTEL_TRACES_EXPORTER: console,otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel.next/
