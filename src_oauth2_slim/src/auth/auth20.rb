@@ -25,11 +25,15 @@ module Auth20
         #     redirect_uri=http://redirect.com&
         #     scope=id,email,name&
         #     state=168f5cba-b631-479e-9ff8-a6cbd467a188
-        redirect_uri = URI.parse params[:redirect_uri]
-        redirect =  request.referer + "/" + redirect_uri.path
+        p params
+        p env
+        p request.referer
+
+        r_uri = URI.parse params[:redirect_uri]
+        redirect = request.referer.to_s + "/" + r_uri.path
         puts({
           redirect_uri: params[:redirect_uri],
-          redirect_uri: redirect_uri,
+          r_uri: r_uri,
           redirect: redirect,
           r: "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
         }.to_json)
