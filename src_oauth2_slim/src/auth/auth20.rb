@@ -96,6 +96,7 @@ module Auth20
         # OR Content-Type: application/jwt
         {
           id: 'admin',
+          role: 'admin',
           sub: "admin",
           name: "Alice Adams",
           email: "alice@example.com",
