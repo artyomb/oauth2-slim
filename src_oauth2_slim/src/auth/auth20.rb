@@ -50,7 +50,7 @@ module Auth20
           'exp': Time.now.to_i + 3600,  # Expiration (1 hour from now)
           'iat': Time.now.to_i,  # Issued at
           'jti': 'Unique token ID',  # Unique token ID
-          'scope': 'allowed_scopes'  # Authorized scopes
+          'scope': 'id,email,name'  # Authorized scopes
         }
         # @public_key ||= OpenSSL::PKey::RSA.new %(-----BEGIN PUBLIC KEY-----\n#{@realm_info['public_key']}\n-----END PUBLIC KEY-----)
         # new_key = OpenSSL::PKey::RSA.new(2048)
@@ -62,14 +62,26 @@ module Auth20
         {
           "access_token": JWT.encode(payload, private_key, 'RS256'),
           'token_type': 'Bearer',
+          "token_format": "jwt",
+          "token_algorithm": "RS256",
           'expires_in': 3600,
           'refresh_token': 'refresh_token',
           'scope': 'allowed_scopes'
         }.to_json
-      rescue StandardError => e
-        $stderr.puts e.message
-        $stderr.puts e.backtrace.join("\n")
-        raise
+      end
+
+      get '/user' do
+        # request_headers.HTTP_AUTHORIZATION = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3lvdXItZG9tYWluLmNvbSIsInN1YiI6ImFkbWluIiwiYXVkIjoxLCJleHAiOjE3MzQyMTk2OTksImlhdCI6MTczNDIxNjA5OSwianRpIjoiVW5pcXVlIHRva2VuIElEIiwic2NvcGUiOiJhbGxvd2VkX3Njb3BlcyJ9.3IJtY4EaQ0lkxtKiEtKp7piZMRjgWmHbaRKDp9Ny78tLN4q7CY13laJ_btoTBEat21lse1LWenc_ZRNuR7AzXXvX5jn04tfXpzth7NejfFCIA3UtIpAoWG_suPFzs9E3950f_QzO9hwcu0xaYTezKhk_s9CC6_2nPnX2DuBw8F3GIM5jCCrvyc4dWP_Guz64aUWDN6R9c8VyEUSWF6LdNB50peLHhc_gWDknqZef-dmC7jB0LKs0lpCvWlcirbDEgaKvVZ3H5q8UpsPGy-ds5XD284sateHetU9MPfV4ZcasCPP8UnejjC0R5gLyCrx7ulfN6tyT5tSvev0a836uew"
+        begin
+          token = request.headers['Authorization'][/Bearer (.*)/, 1]
+          access_token = JWT.decode token, '', false, algorithm: 'RS256'
+          p access_token
+        rescue StandardError => e
+        end
+        content_type :json
+        {
+          id: 'admin'
+        }.to_json
       end
 
       ajax_call :get, '/oauth_back/me' do
