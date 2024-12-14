@@ -29,21 +29,29 @@ module Auth20
         redirect "#{request.scheme}://#{request.referer || 'redirect.fake'}?code={authorization_code}&state=#{params[:state]}"
       end
 
-      ajax_call :post, '/token' do |data|
+      # request_body = "code=%7Bauthorization_code%7D&grant_type=authorization_code"
+      # request_headers.HTTP_AUTHORIZATION ="Basic cG9ydGFpbmVyX2NsaWVudF9pZDpwb3J0YWluZXJfc2VjcmV0"
+
+      # request_body "client_id=portainer_client_id&
+      # client_secret=portainer_secret&
+      # code=%7Bauthorization_code%7D&
+      # grant_type=authorization_code"
+      post '/token' do
         # grant_type = request.form.get('grant_type')
         # client_id = request.form.get('client_id')
         # client_secret = request.form.get('client_secret')
         # code = request.form.get('code')
+        p (request.form_hash rescue { form_hash: false })
 
         client_id = 1
         payload = {
           'iss': 'https://your-domain.com',  # Issuer
-          'sub': 'user_123',  # Subject (user ID) - would typically come from authorization
+          'sub': 'admin',  # Subject (user ID) - would typically come from authorization
           'aud': client_id,  # Audience (client ID)
           'exp': Time.now.to_i + 3600,  # Expiration (1 hour from now)
           'iat': Time.now.to_i,  # Issued at
-          'jti': secrets.token_urlsafe(16),  # Unique token ID
-          'scope': ' '.join(client['allowed_scopes'])  # Authorized scopes
+          'jti': 'Unique token ID',  # Unique token ID
+          'scope': 'allowed_scopes'  # Authorized scopes
         }
         # @public_key ||= OpenSSL::PKey::RSA.new %(-----BEGIN PUBLIC KEY-----\n#{@realm_info['public_key']}\n-----END PUBLIC KEY-----)
         # new_key = OpenSSL::PKey::RSA.new(2048)
@@ -52,13 +60,16 @@ module Auth20
         private_key = OpenSSL::PKey::RSA.new key_text
 
         {
-          "access_token":  JWT.encode(payload, private_key, 'RS256'),
-          "token_type": "bearer",
-          "expires_in": 3600,
-          "refresh_token": "refresh_token",
-          "scope": "openid",
-          "id_token": jwt
+          "access_token": JWT.encode(payload, private_key, 'RS256'),
+          'token_type': 'Bearer',
+          'expires_in': 3600,
+          'refresh_token': 'refresh_token',
+          'scope': 'allowed_scopes'
         }
+      rescue StandardError => e
+        $stderr.puts e.message
+        $stderr.puts e.backtrace.join("\n")
+        raise
       end
 
       ajax_call :get, '/oauth_back/me' do
