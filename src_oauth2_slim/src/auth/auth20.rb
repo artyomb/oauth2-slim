@@ -25,8 +25,7 @@ module Auth20
         #     redirect_uri=http://redirect.com&
         #     scope=id,email,name&
         #     state=168f5cba-b631-479e-9ff8-a6cbd467a188
-
-        redirect "#{request.scheme}://#{request.referer || 'redirect.fake'}?code={authorization_code}&state=#{params[:state]}"
+        redirect "#{request.referer || 'redirect.fake'}/?code={authorization_code}&state=#{params[:state]}"
       end
 
       # request_body = "code=%7Bauthorization_code%7D&grant_type=authorization_code"
