@@ -84,6 +84,10 @@ module Auth20
         }.to_json
       end
 
+      get '/logout' do
+        redirect "#{request.referer || 'redirect.fake'}"
+      end
+
       ajax_call :get, '/oauth_back/me' do
         access_token = request.cookies['token']
         token = JWT.decode access_token, '', false, algorithm: 'RS256'
