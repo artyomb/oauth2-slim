@@ -12,9 +12,9 @@ Console.logger.enable Class, 3
 otel_initialize
 
 server = Rack::Builder.new do
-  if defined? OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
-    use OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
-  end
+  # if defined? OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
+  #   use OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
+  # end
 
   use (Class.new do
     def initialize(app, *opts) = (@app = app; @opts = opts)
@@ -22,9 +22,9 @@ server = Rack::Builder.new do
       request_headers = env.select { |k, _| k.start_with? 'HTTP_' }
       request_body = env['rack.input'].read
 
-      code, headers, body = @app.call(env)
-      otl_span( :Request, {request_headers: , request_body:, code:, headers: , body: }) {}
-      [code, headers, body]
+      response_code, response_headers, response_body = @app.call(env)
+      otl_span( :Request, {request_headers: , request_body:, response_code:, response_headers: , response_body: }) {}
+      [response_code, response_headers, response_body]
     end
   end)
 
