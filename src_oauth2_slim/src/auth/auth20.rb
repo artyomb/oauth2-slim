@@ -3,14 +3,14 @@ module Auth20
   def self.included(base)
     base.class_eval do
       before do
-        unless request.path_info =~ /login|\/api|favicon/
-          halt 401 if (request.path_info =~ /\/oauth_back\/me/) && request.cookies['authenticated'].nil?
-          redirect '/oauth_back/login' if request.cookies['authenticated'].nil?
-          # redirect '/login' if request.cookies['authenticated'].nil? && request.path_info != '/login'
-        end
-        if request.path_info =~ /\/api/
-          # initialize
-        end
+        # unless request.path_info =~ /login|\/api|favicon/
+        #   halt 401 if (request.path_info =~ /\/oauth_back\/me/) && request.cookies['authenticated'].nil?
+        #   redirect '/oauth_back/login' if request.cookies['authenticated'].nil?
+        #   # redirect '/login' if request.cookies['authenticated'].nil? && request.path_info != '/login'
+        # end
+        # if request.path_info =~ /\/api/
+        #   # initialize
+        # end
       end
 
       after do
