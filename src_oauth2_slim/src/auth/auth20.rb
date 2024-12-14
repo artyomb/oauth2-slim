@@ -30,13 +30,13 @@ module Auth20
         p request.referer
 
         r_uri = URI.parse params[:redirect_uri]
-        redirect = request.referer.to_s + "/" + r_uri.path
-        puts({
+        redirect = request.referer.to_s + r_uri.path[1..]
+        p({
           redirect_uri: params[:redirect_uri],
           r_uri: r_uri,
           redirect: redirect,
           r: "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
-        }.to_json)
+        })
 
         redirect "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
       end
