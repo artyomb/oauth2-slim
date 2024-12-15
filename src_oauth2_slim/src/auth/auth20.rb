@@ -102,6 +102,7 @@ module Auth20
           login: 'admin',  # for grafana?
           role: 'Admin',  # for grafana?
           username: 'admin',  # for grafana?
+          name: 'Admin',
           # sub: "admin",
           # name: "Alice Adams",
           # email: "alice@example.com",
@@ -112,7 +113,7 @@ module Auth20
       end
 
       get '/logout' do
-        redirect "#{request.referer || 'redirect.fake'}"
+        # redirect "#{request.referer || 'redirect.fake'}"
       end
 
       ajax_call :get, '/oauth_back/me' do
