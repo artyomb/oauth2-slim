@@ -25,19 +25,8 @@ module Auth20
         #     redirect_uri=http://redirect.com&
         #     scope=id,email,name&
         #     state=168f5cba-b631-479e-9ff8-a6cbd467a188
-        p params
-        p env
-        p request.referer
-
         r_uri = URI.parse params[:redirect_uri]
         redirect = request.referer.to_s + r_uri.path[1..]
-        p({
-          redirect_uri: params[:redirect_uri],
-          r_uri: r_uri,
-          redirect: redirect,
-          r: "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
-        })
-
         redirect "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
       end
 
@@ -94,6 +83,8 @@ module Auth20
           access_token = JWT.decode token, '', false, algorithm: 'RS256'
           p access_token
         rescue StandardError => e
+          $logger.error e.message
+          $logger.error e.backtrace.join("\n")
         end
         content_type :json
         # OR Content-Type: application/jwt
@@ -105,7 +96,7 @@ module Auth20
           name: 'Admin',
           # sub: "admin",
           # name: "Alice Adams",
-          # email: "alice@example.com",
+          email: "admin@example.com",
           # birthdate: "1975-12-31",
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
