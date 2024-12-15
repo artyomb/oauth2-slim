@@ -47,15 +47,15 @@ module Auth20
         client_id = 1
         payload = {
           'iss': 'https://your-domain.com',  # Issuer
-          'sub': 'Admin',  # Subject (user ID) - would typically come from authorization
-          'login': 'Admin',  # for grafana?
+          'sub': 'admin',  # Subject (user ID) - would typically come from authorization
+          'login': 'admin',  # for grafana?
           'role': 'Admin',  # for grafana?
-          'username': 'Admin',  # for grafana?
-          'aud': client_id,  # Audience (client ID)
+          # 'username': 'admin',  # for grafana?
+          # 'aud': client_id,  # Audience (client ID)
           'exp': Time.now.to_i + 3600,  # Expiration (1 hour from now)
           'iat': Time.now.to_i,  # Issued at
-          'jti': 'Unique token ID',  # Unique token ID
-          'scope': 'id,email,name'  # Authorized scopes
+          # 'jti': 'Unique token ID',  # Unique token ID
+          # 'scope': 'id,email,name'  # Authorized scopes
         }
         # @public_key ||= OpenSSL::PKey::RSA.new %(-----BEGIN PUBLIC KEY-----\n#{@realm_info['public_key']}\n-----END PUBLIC KEY-----)
         # new_key = OpenSSL::PKey::RSA.new(2048)
@@ -90,13 +90,13 @@ module Auth20
         content_type :json
         # OR Content-Type: application/jwt
         {
-          sub: "Admin",
-          id: 'Admin',
+          sub: "admin",
+          id: 'admin',
           # login: 'admin',  # for grafana?
-          # role: 'Admin',  # for grafana?
+          # role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
-          name: 'Admin',
-          email: "admin@example.com",
+          # name: 'admin',
+          # email: "admin@example.com",
           # birthdate: "1975-12-31",
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
