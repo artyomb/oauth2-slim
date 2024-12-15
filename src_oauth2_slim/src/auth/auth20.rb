@@ -47,10 +47,10 @@ module Auth20
         client_id = 1
         payload = {
           'iss': 'https://your-domain.com',  # Issuer
-          'sub': 'admin',  # Subject (user ID) - would typically come from authorization
-          'login': 'admin',  # for grafana?
+          'sub': 'Admin',  # Subject (user ID) - would typically come from authorization
+          'login': 'Admin',  # for grafana?
           'role': 'Admin',  # for grafana?
-          'username': 'admin',  # for grafana?
+          'username': 'Admin',  # for grafana?
           'aud': client_id,  # Audience (client ID)
           'exp': Time.now.to_i + 3600,  # Expiration (1 hour from now)
           'iat': Time.now.to_i,  # Issued at
@@ -90,11 +90,11 @@ module Auth20
         content_type :json
         # OR Content-Type: application/jwt
         {
-          sub: "admin",
-          id: 'admin',
-          login: 'admin',  # for grafana?
-          role: 'Admin',  # for grafana?
-          username: 'admin',  # for grafana?
+          sub: "Admin",
+          id: 'Admin',
+          # login: 'admin',  # for grafana?
+          # role: 'Admin',  # for grafana?
+          # username: 'admin',  # for grafana?
           name: 'Admin',
           email: "admin@example.com",
           # birthdate: "1975-12-31",
