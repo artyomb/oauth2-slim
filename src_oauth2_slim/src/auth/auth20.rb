@@ -59,6 +59,9 @@ module Auth20
         payload = {
           'iss': 'https://your-domain.com',  # Issuer
           'sub': 'admin',  # Subject (user ID) - would typically come from authorization
+          'login': 'admin',  # for grafana?
+          'role': 'Admin',  # for grafana?
+          'username': 'admin',  # for grafana?
           'aud': client_id,  # Audience (client ID)
           'exp': Time.now.to_i + 3600,  # Expiration (1 hour from now)
           'iat': Time.now.to_i,  # Issued at
