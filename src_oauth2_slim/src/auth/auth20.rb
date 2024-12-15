@@ -26,7 +26,7 @@ module Auth20
         #     scope=id,email,name&
         #     state=168f5cba-b631-479e-9ff8-a6cbd467a188
         r_uri = URI.parse params[:redirect_uri]
-        redirect = request.referer.to_s + r_uri.path[1..]
+        redirect = request.referer.to_s + r_uri.path[1..].to_s
         redirect "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
       end
 
