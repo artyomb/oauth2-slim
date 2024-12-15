@@ -23,7 +23,8 @@ server = Rack::Builder.new do
       request_body = env['rack.input'].read
 
       response_code, response_headers, response_body = @app.call(env)
-      otl_span( :Request, {request_headers: , request_body:, response_code:, response_headers: , response_body: response_body.to_json }) {}
+      response_body = response_body.read if response_body.respond_to? :read
+      otl_span( :Request, {request_headers: , request_body:, response_code:, response_headers: , response_body: }) {}
       [response_code, response_headers, response_body]
     end
   end)
