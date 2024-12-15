@@ -99,13 +99,15 @@ module Auth20
         # OR Content-Type: application/jwt
         {
           id: 'admin',
-          role: 'Admin',
-          sub: "admin",
-          name: "Alice Adams",
-          email: "alice@example.com",
-          birthdate: "1975-12-31",
-          "https://claims.example.com/department": "engineering",
-          picture: "https://example.com/83692/photo.jpg"
+          login: 'admin',  # for grafana?
+          role: 'Admin',  # for grafana?
+          username: 'admin',  # for grafana?
+          # sub: "admin",
+          # name: "Alice Adams",
+          # email: "alice@example.com",
+          # birthdate: "1975-12-31",
+          # "https://claims.example.com/department": "engineering",
+          # picture: "https://example.com/83692/photo.jpg"
         }.to_json
       end
 
