@@ -1,18 +1,64 @@
+version: '3.8'
+
 services:
-  oauth2_slim:
-    image: ${REGISTRY_HOST}/oauth2-slim
-    build:
-      context: ../src_oauth2_slim
-      dockerfile: ../docker/ruby/Dockerfile
-      cache_from:
-        - type=gha,scope=src_oauth2_slim
-      cache_to:
-        - type=gha,scope=src_oauth2_slim,mode=max
+  traefik:
+    init: true
+    image: traefik:v3.0.1
+    command:
+      - "--core.defaultRuleSyntax=v2"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker=true"
+      - "--accesslog"
+      - "--log"
+      - "--api"
+      - "--api.insecure=true"
+      - "--log.level=DEBUG"
     volumes:
-    - "/var/run/docker.sock:/var/run/docker.sock:rw"
+      - "/var/run/docker.sock:/var/run/docker.sock"
     ports:
-      - 7000:7000
+      - 80:80
+    networks:
+      - web
+
+  oauth2-slim:
+    image: ${REGISTRY_HOST}/oauth2-slim
+    container_name: oauth2-slim
+    build:
+     context: ../src_oauth2_slim
+     dockerfile: ../docker/ruby/Dockerfile
+     cache_from:
+       - type=gha,scope=src_oauth2_slim
+     cache_to:
+       - type=gha,scope=src_oauth2_slim,mode=max
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:rw"
+    ports:
+      - "7000:7000"
     environment:
-      OTEL_LOG_LEVEL: debug
-      OTEL_TRACES_EXPORTER: console,otlp
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel.next/
+      - OTEL_LOG_LEVEL=debug
+      - OTEL_TRACES_EXPORTER=console,otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel.next/
+      - AUTH_DOMAIN=89.110.95.65:7000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.oauth.entrypoints=web"
+      - "traefik.http.services.oauth.loadbalancer.server.port=7000"
+    networks:
+      - web
+
+  whoami:
+    image: traefik/whoami
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`89.110.95.65`) && PathPrefix(`/whoami`)"
+      - "traefik.http.routers.whoami.middlewares=auth"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://oauth2-slim:7000/auth"
+      - "traefik.http.middlewares.auth.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.auth.forwardauth.authRequestHeaders=X-Forwarded-Proto,X-Forwarded-Host,X-Forwarded-Uri,Cookie"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge
