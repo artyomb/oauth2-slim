@@ -10,11 +10,13 @@ require 'json'
 require_relative 'ajax'
 require 'digest'
 require_relative 'auth/auth20'
+require_relative 'auth/auth_forward'
 
 Slim::Engine.set_options pretty: true
 class SinatraSrv < Sinatra::Base
   helpers Ajax::Helpers
   helpers Auth20
+  helpers AuthForward
 
   register Sinatra::Namespace
   register Sinatra::Reloader
