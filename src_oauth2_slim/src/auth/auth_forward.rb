@@ -38,7 +38,10 @@ module AuthForward
           'iat': Time.now.to_i
         }, PRIVATE_KEY, 'RS256')
 
-        response.set_cookie('auth_token', value: access_token, path: '/', domain: request.env['HTTP_X_FORWARDED_HOST'], expires: Time.now + 3600, httponly: true)
+        state_uri = URI.parse(state)
+        cookie_domain = state_uri.host
+
+        response.set_cookie('auth_token', value: access_token, path: '/', domain: cookie_domain, expires: Time.now + 3600, httponly: true, secure: true)
 
         redirect state
       end
