@@ -41,7 +41,7 @@ module AuthForward
         state_uri = URI.parse(state)
         cookie_domain = state_uri.host
 
-        response.set_cookie('auth_token', value: access_token, path: '/', domain: cookie_domain, expires: Time.now + 3600, httponly: true, secure: true)
+        response.set_cookie('auth_token', value: access_token, path: '/', domain: cookie_domain, expires: Time.now + 3600, httponly: true, secure: true, same_site: :none)
 
         redirect state
       end
