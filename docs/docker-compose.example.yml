@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  traefik:
+    init: true
+    image: traefik:v3.0.1
+    command:
+      - "--core.defaultRuleSyntax=v2"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker=true"
+      - "--accesslog"
+      - "--log"
+      - "--api"
+      - "--api.insecure=true"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    ports:
+      - 80:80
+
+  oauth2-slim:
+    image: dtorry/oauth2-slim
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:rw"
+    ports:
+      - "7000:7000"
+    environment:
+      - FORWARD_OAUTH_AUTH_URL=http://localhost:7000/authorize
+      - FORWARD_OAUTH_TOKEN_URL=http://localhost:7000/_oauth
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.auth.forwardauth.address=http://oauth2-slim:7000/auth"
+
+
+  whoami:
+    image: traefik/whoami
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
+      - "traefik.http.routers.whoami.middlewares=auth"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"

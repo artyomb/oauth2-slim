@@ -19,16 +19,16 @@ module Auth20
         end
       end
 
-      get '/authorize' do
-        #     response_type=code&
-        #     client_id=portainer_client_id&
-        #     redirect_uri=http://redirect.com&
-        #     scope=id,email,name&
-        #     state=168f5cba-b631-479e-9ff8-a6cbd467a188
-        r_uri = URI.parse params[:redirect_uri]
-        redirect = request.referer.to_s + r_uri.path[1..].to_s
-        redirect "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
-      end
+      # get '/authorize' do
+      #   #     response_type=code&
+      #   #     client_id=portainer_client_id&
+      #   #     redirect_uri=http://redirect.com&
+      #   #     scope=id,email,name&
+      #   #     state=168f5cba-b631-479e-9ff8-a6cbd467a188
+      #   r_uri = URI.parse params[:redirect_uri]
+      #   redirect = request.referer.to_s + r_uri.path[1..].to_s
+      #   redirect "#{redirect}/?code={authorization_code}&state=#{params[:state]}"
+      # end
 
       # request_body = "code=%7Bauthorization_code%7D&grant_type=authorization_code"
       # request_headers.HTTP_AUTHORIZATION ="Basic cG9ydGFpbmVyX2NsaWVudF9pZDpwb3J0YWluZXJfc2VjcmV0"
