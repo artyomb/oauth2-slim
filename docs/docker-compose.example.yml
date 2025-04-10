@@ -24,8 +24,8 @@ services:
     ports:
       - "7000:7000"
     environment:
-      - OAUTH_AUTH_URL=http://localhost:7000/authorize
-      - OAUTH_TOKEN_URL=http://localhost:7000/_oauth
+      - FORWARD_OAUTH_AUTH_URL=http://localhost:7000/authorize
+      - FORWARD_OAUTH_TOKEN_URL=http://localhost:7000/_oauth
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.auth.forwardauth.address=http://oauth2-slim:7000/auth"
