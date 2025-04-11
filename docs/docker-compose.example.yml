@@ -21,6 +21,7 @@ services:
     image: dtorry/oauth2-slim
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:rw"
+      # - "../src_oauth2_slim:/app"
     ports:
       - "7000:7000"
     environment:
