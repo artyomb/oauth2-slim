@@ -32,7 +32,7 @@ module AuthForward
           else
             proto = request.env['HTTP_X_FORWARDED_PROTO']
             host = request.env['HTTP_X_FORWARDED_HOST']
-            path = request.env['HTTP_X_FORWARDED_URI']
+            # path = request.env['HTTP_X_FORWARDED_URI']
             full_uri = "#{proto}://#{host}#{path}"
             redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
           end
