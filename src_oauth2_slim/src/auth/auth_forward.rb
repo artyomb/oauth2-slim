@@ -11,9 +11,10 @@ module AuthForward
 
       get '/auth' do
         token = request.cookies['auth_token']
-        # token = request.env['HTTP_X_AUTH_TOKEN']
-        if valid_token?(token)
-          # response.headers['X-Auth-Token'] = token
+        # token = request.env['HTTP_AUTHORIZATION']&.sub('Bearer ', '')
+        if valid_token?(token) || params[:code]
+          # response.headers['Authorization'] = "Bearer #{token}"
+          response.set_cookie('auth_token', value: "test", path: '/', expires: Time.now + 3600, httponly: true, secure: true, same_site: :none)
           status 200
           "OK"
         else
@@ -22,7 +23,7 @@ module AuthForward
           path = request.env['HTTP_X_FORWARDED_URI']
           full_uri = "#{proto}://#{host}#{path}"
 
-          redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{FORWARD_OAUTH_TOKEN_URL}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
+          redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
         end
       end
 
@@ -41,8 +42,9 @@ module AuthForward
 
         state_uri = URI.parse(state)
         cookie_domain = state_uri.host
-        # response.headers['X-Auth-Token'] = access_token
-        response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 3600, httponly: true, secure: true, same_site: :none)
+
+        # response.headers['Authorization'] = "Bearer #{access_token}"
+        response.set_cookie('auth_token', value: access_token, path: '/',domain: cookie_domain, expires: Time.now + 3600, httponly: true, secure: true, same_site: :none)
 
         redirect state
       end
