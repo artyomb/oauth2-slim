@@ -17,7 +17,7 @@ module AuthForward
           "OK"
         else
           path = request.env['HTTP_X_FORWARDED_URI']
-          parsed_params = Rack::Utils.parse_nested_query(path&.split('?', 2)&.last&.gsub('?', '&') || '')
+          parsed_params = Rack::Utils.parse_nested_query(path[/\?(.*)/, 1])
           $stdout.puts "parsed_params: #{parsed_params}"
           if parsed_params.key?('code')
             access_token = JWT.encode({
@@ -35,7 +35,8 @@ module AuthForward
             host = request.env['HTTP_X_FORWARDED_HOST']
             path = request.env['HTTP_X_FORWARDED_URI']
             full_uri = "#{proto}://#{host}#{path}"
-            redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
+            full_uri_short = full_uri.split('?')[0]
+            redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
           end
         end
       end
