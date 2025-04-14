@@ -77,15 +77,14 @@ module AuthForward
       private
 
       def valid_token?(token)
-        if token && !token.empty?
-          puts "Token received and is present: #{token}"
+        return false unless token && !token.empty?
+        begin
+          decoded = JWT.decode(token, PUBLIC_KEY, true, { algorithm: 'RS256' }).first
+          return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
+          return false unless decoded['exp'].to_i > Time.now.to_i
           true
-        else
-          puts "Token is missing or empty"
-          false
         end
       end
-
     end
   end
 end
