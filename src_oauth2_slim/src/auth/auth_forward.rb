@@ -17,7 +17,8 @@ module AuthForward
           "OK"
         else
           path = request.env['HTTP_X_FORWARDED_URI']
-          parsed_params = Rack::Utils.parse_nested_query(path[/\?(.*)/, 1])
+          query = path[/\?(.*)/, 1].to_s.split('&state=', 2)
+          parsed_params = Rack::Utils.parse_nested_query(query[0].to_s).merge({'state' => query[1]})
           $stdout.puts "parsed_params: #{parsed_params}"
           if parsed_params.key?('code')
             access_token = JWT.encode({
