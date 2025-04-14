@@ -83,6 +83,10 @@ module AuthForward
           return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
           return false unless decoded['exp'].to_i > Time.now.to_i
           true
+          rescue JWT::DecodeError => e
+          false
+          rescue StandardError => e
+          false
         end
       end
     end
