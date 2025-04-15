@@ -68,10 +68,19 @@ module AuthForward
         redirect_uri = params[:redirect_uri]
         state = params[:state]
         client_id = params[:client_id]
+        username = params[:username]
+        password = params[:password]
 
-        authorization_code = SecureRandom.hex(16)
-
-        redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+        if username && password
+          if username == 'admin' && password == 'admin'
+            authorization_code = SecureRandom.hex(16)
+            redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+          else
+            slim :login, locals: { redirect_uri: redirect_uri, state: state, client_id: client_id, error: "Invalid username or password" }
+          end
+        else
+          slim :login, locals: { redirect_uri: redirect_uri, state: state, client_id: client_id, error: nil }
+        end
       end
 
       private
