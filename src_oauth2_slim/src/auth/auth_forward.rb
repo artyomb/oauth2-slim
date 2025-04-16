@@ -6,6 +6,7 @@ module AuthForward
   PUBLIC_KEY = PRIVATE_KEY.public_key
   FORWARD_OAUTH_AUTH_URL = ENV['FORWARD_OAUTH_AUTH_URL']
   FORWARD_OAUTH_TOKEN_URL = ENV['FORWARD_OAUTH_TOKEN_URL']
+  AUTH_CODES = {}
 
   def self.included(base)
     base.class_eval do
@@ -20,7 +21,7 @@ module AuthForward
           query = path[/\?(.*)/, 1].to_s.split('&state=', 2)
           parsed_params = Rack::Utils.parse_nested_query(query[0].to_s).merge({'state' => query[1]})
           $stdout.puts "parsed_params: #{parsed_params}"
-          if parsed_params.key?('code')
+          if parsed_params.key?('code') && AUTH_CODES.key?(parsed_params['code'])
             access_token = JWT.encode({
               'iss': "#{FORWARD_OAUTH_AUTH_URL}",
               'sub': 'admin',
@@ -30,6 +31,7 @@ module AuthForward
               'iat': Time.now.to_i
             }, PRIVATE_KEY, 'RS256')
             response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 3600, httponly: true)
+            AUTH_CODES.delete(parsed_params['code'])
             redirect parsed_params['state']
           else
             proto = request.env['HTTP_X_FORWARDED_PROTO']
@@ -42,28 +44,6 @@ module AuthForward
         end
       end
 
-      # get '/_oauth' do
-      #   code = params[:code]
-      #   state = params[:state]
-
-      #   access_token = JWT.encode({
-      #     'iss': "#{FORWARD_OAUTH_AUTH_URL}",
-      #     'sub': 'admin',
-      #     'login': 'admin',
-      #     'role': 'Admin',
-      #     'exp': Time.now.to_i + 3600,
-      #     'iat': Time.now.to_i
-      #   }, PRIVATE_KEY, 'RS256')
-
-      #   state_uri = URI.parse(state)
-      #   cookie_domain = state_uri.host
-
-      #   # response.headers['Authorization'] = "Bearer #{access_token}"
-      #   response.set_cookie('auth_token', value: access_token, path: '/',domain: cookie_domain, expires: Time.now + 3600, httponly: true, secure: true, same_site: :none)
-
-      #   redirect state
-      # end
-
       get '/authorize' do
         redirect_uri = params[:redirect_uri]
         state = params[:state]
@@ -73,6 +53,7 @@ module AuthForward
 
         if username == 'admin' && password == 'admin'
           authorization_code = SecureRandom.hex(16)
+          AUTH_CODES[authorization_code] = true
           redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
         else
           slim :login, locals: { redirect_uri:, state:, client_id:, error: password ? 'Invalid username or password' : nil }
