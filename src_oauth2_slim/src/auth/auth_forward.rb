@@ -6,15 +6,15 @@ module AuthForward
   PUBLIC_KEY = PRIVATE_KEY.public_key
   FORWARD_OAUTH_AUTH_URL = ENV['FORWARD_OAUTH_AUTH_URL']
   FORWARD_OAUTH_TOKEN_URL = ENV['FORWARD_OAUTH_TOKEN_URL']
-  
+
   def self.included(base)
     base.class_eval do
 
       get '/auth' do
         token = request.cookies['auth_token']
-        if valid_token?(token)
+        if valid_token? token
           status 200
-          "OK"
+          'OK'
         else
           path = request.env['HTTP_X_FORWARDED_URI']
           query = path[/\?(.*)/, 1].to_s.split('&state=', 2)
@@ -71,33 +71,28 @@ module AuthForward
         username = params[:username]
         password = params[:password]
 
-        if username && password
-          if username == 'admin' && password == 'admin'
-            authorization_code = SecureRandom.hex(16)
-            redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
-          else
-            slim :login, locals: { redirect_uri: redirect_uri, state: state, client_id: client_id, error: "Invalid username or password" }
-          end
+        if username == 'admin' && password == 'admin'
+          authorization_code = SecureRandom.hex(16)
+          redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
         else
-          slim :login, locals: { redirect_uri: redirect_uri, state: state, client_id: client_id, error: nil }
+          slim :login, locals: { redirect_uri:, state:, client_id:, error: password ? 'Invalid username or password' : nil }
         end
       end
 
       private
 
       def valid_token?(token)
-        return false unless token && !token.empty?
-        begin
-          decoded = JWT.decode(token, PUBLIC_KEY, true, { algorithm: 'RS256' }).first
-          return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
-          return false unless decoded['exp'].to_i > Time.now.to_i
-          true
-          rescue JWT::DecodeError => e
-          false
-          rescue StandardError => e
-          false
-        end
+        return false if !token || token.empty?
+
+        decoded = JWT.decode(token, PUBLIC_KEY, true, { algorithm: 'RS256' }).first
+
+        return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
+        return false unless decoded['exp'].to_i > Time.now.to_i
+        true
+      rescue StandardError => _e
+        false
       end
+
     end
   end
 end
