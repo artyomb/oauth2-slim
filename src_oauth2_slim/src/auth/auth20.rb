@@ -107,12 +107,12 @@ module Auth20
         # redirect "#{request.referer || 'redirect.fake'}"
       end
 
-      ajax_call :get, '/oauth_back/me' do
-        access_token = request.cookies['token']
-        token = JWT.decode access_token, '', false, algorithm: 'RS256'
-        # user_groups = @kc.user_groups(KC_REALM, token[0]['sub'])
-        token[0]
-      end
+      # ajax_call :get, '/oauth_back/me' do
+      #   access_token = request.cookies['token']
+      #   token = JWT.decode access_token, '', false, algorithm: 'RS256'
+      #   # user_groups = @kc.user_groups(KC_REALM, token[0]['sub'])
+      #   token[0]
+      # end
 
       get('/oauth_back/login') do
         slim :login, layout: false

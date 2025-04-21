@@ -60,6 +60,14 @@ module AuthForward
         end
       end
 
+      get '/logout' do
+        response.set_cookie('auth_token', value: '', path: '/', expires: Time.now - 3600, httponly: true)
+        proto = request.env['HTTP_X_FORWARDED_PROTO']
+        host = request.env['HTTP_X_FORWARDED_HOST']
+        uri = "#{proto}://#{host}"
+        redirect uri
+      end
+
       private
 
       def valid_token?(token)
