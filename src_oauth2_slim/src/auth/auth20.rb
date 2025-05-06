@@ -47,7 +47,7 @@ module Auth20
         client_id = 1
         payload = {
           'iss': 'https://your-domain.com',  # Issuer
-          'sub': 'admin',  # Subject (user ID) - would typically come from authorization
+          'sub': 'user',  # Subject (user ID) - would typically come from authorization
           'login': 'admin',  # for grafana?
           'role': 'Admin',  # for grafana?
           # 'username': 'admin',  # for grafana?
@@ -90,7 +90,7 @@ module Auth20
         content_type :json
         # OR Content-Type: application/jwt
         {
-          sub: "admin",
+          sub: "user",
           id: 'admin',
           # login: 'admin',  # for grafana?
           # role: 'admin',  # for grafana?
