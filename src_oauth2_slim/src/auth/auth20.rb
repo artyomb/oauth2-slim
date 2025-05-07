@@ -93,7 +93,7 @@ module Auth20
           sub: "admin",
           # id: 'admin',
           # login: 'admin',  # for grafana?
-         Ы # role: 'Admin',  # for grafana?
+          # role: 'Admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
           email: "admin@localhost",
