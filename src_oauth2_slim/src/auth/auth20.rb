@@ -92,7 +92,7 @@ module Auth20
         {
           sub: "Grafana_admin",
           # id: 'admin',
-          # login: 'admin',  # for grafana?
+          login: 'Grafana_admin',  # for grafana?
           role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
