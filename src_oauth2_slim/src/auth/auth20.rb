@@ -90,13 +90,13 @@ module Auth20
         content_type :json
         # OR Content-Type: application/jwt
         {
-          sub: "admin",
+          sub: "Grafana_admin",
           # id: 'admin',
           # login: 'admin',  # for grafana?
           role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
-          email: "admin@localhost",
+          email: "admin@admin",
           # birthdate: "1975-12-31",
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
