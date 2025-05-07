@@ -49,7 +49,7 @@ module Auth20
           'iss': 'https://your-domain.com',  # Issuer
           'sub': 'admin',  # Subject (user ID) - would typically come from authorization
           'login': 'admin',  # for grafana?
-          'role': 'Admin',  # for grafana?
+          'role': 'admin',  # for grafana?
           # 'username': 'admin',  # for grafana?
           # 'aud': client_id,  # Audience (client ID)
           'exp': Time.now.to_i + 3600,  # Expiration (1 hour from now)
@@ -93,7 +93,7 @@ module Auth20
           sub: "admin",
           # id: 'admin',
           # login: 'admin',  # for grafana?
-          role: 'Admin',  # for grafana?
+          role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
           email: "admin@localhost",
