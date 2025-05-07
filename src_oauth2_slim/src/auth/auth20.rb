@@ -91,9 +91,9 @@ module Auth20
         # OR Content-Type: application/jwt
         {
           sub: "admin",
-          id: 'admin',
+          # id: 'admin',
           # login: 'admin',  # for grafana?
-          role: 'Admin',  # for grafana?
+         Ы # role: 'Admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
           email: "admin@localhost",
