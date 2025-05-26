@@ -2,12 +2,12 @@ services:
   oauth2_slim:
     image: ${REGISTRY_HOST}/oauth2-slim
     build:
-      context: ../src_oauth2_slim
+      context: ../src
       dockerfile: ../docker/ruby/Dockerfile
       cache_from:
-        - type=gha,scope=src_oauth2_slim
+        - type=gha,scope=oauth2_slim
       cache_to:
-        - type=gha,scope=src_oauth2_slim,mode=max
+        - type=gha,scope=oauth2_slim,mode=max
     volumes:
     - "/var/run/docker.sock:/var/run/docker.sock:rw"
     ports:
