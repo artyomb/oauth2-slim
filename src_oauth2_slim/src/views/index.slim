@@ -1,9 +1,0 @@
-h1 Hello
-b Token:
-ruby:
-  access_token = request.cookies['token']
-  token = JWT.decode access_token, '', false, algorithm: 'RS256'
-pre= JSON.pretty_generate(token[0])
-
-a href='/access_management' Access Management
-a href='/oauth_back/logout' Logout

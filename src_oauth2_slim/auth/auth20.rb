@@ -1,7 +1,10 @@
-module Auth20
+require_relative 'ajax'
 
+module Auth20
   def self.included(base)
     base.class_eval do
+      helpers Ajax::Helpers
+
       before do
         # unless request.path_info =~ /login|\/api|favicon/
         #   halt 401 if (request.path_info =~ /\/oauth_back\/me/) && request.cookies['authenticated'].nil?

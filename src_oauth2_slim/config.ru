@@ -1,35 +1,26 @@
 #!/usr/bin/env ruby
-require_relative 'logging'
-require_relative 'otlp'
-require_relative 'helpers'
-require_relative 'config.rb'
-require_relative 'src/server'
+# require_relative 'src/server'
+require 'sinatra'
+require 'slim'
+require 'rack/sassc'
+require_relative 'auth/auth20'
+require_relative 'auth/auth_forward'
 
-# disable logging for Async::IO::Socket, Falcon::Server
-Console.logger.enable Class, 3
-# Console.logger.enable Falcon::Server, 3
+require 'stack-service-base'
 
-otel_initialize
+StackServiceBase.rack_setup self
 
-server = Rack::Builder.new do
-  # if defined? OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
-  #   use OpenTelemetry::Instrumentation::Rack::Middlewares::TracerMiddleware
-  # end
+Slim::Engine.set_options pretty: true
 
-  use (Class.new do
-    def initialize(app, *opts) = (@app = app; @opts = opts)
-    def call(env)
-      request_headers = env.select { |k, _| k.start_with? 'HTTP_' }
-      request_body = env['rack.input'].read
+use Rack::SassC, css_location: "#{__dir__}/public/css", scss_location: "#{__dir__}/public/css",
+    create_map_file: true, syntax: :sass, check: true, cache: ENV['RACK_ENV'] == 'production'
+# use Rack::Session::Cookie, key: 'rack.session', path: '/', secret: 'secret_stuff123'
 
-      response_code, response_headers, response_body = @app.call(env)
-      response_body = response_body.read if response_body.respond_to? :read
-      otl_span( :Request, {request_headers: , request_body:, response_code:, response_headers: , response_body: }) {}
-      [response_code, response_headers, response_body]
-    end
-  end)
+helpers Auth20, AuthForward
 
-  run SinatraSrv
-end
+not_found { '404 page' }
 
-run server
+get '/', &-> { slim :index }
+get '*favicon.ico', &-> { '' }
+
+run Sinatra::Application

@@ -1,3 +1,8 @@
+require 'net/http'
+require 'jwt'
+require 'json'
+require 'digest'
+
 $stdout.sync=true
 module AuthForward
 

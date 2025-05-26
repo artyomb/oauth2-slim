@@ -6,6 +6,33 @@ html
     meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no"
     link href="/css/style.css" rel="stylesheet" type="text/css"
     link href="/assets/favicon.ico" rel="shortcut icon" type="image/x-icon"
+    sass:
+      .container
+        max-width: 400px
+        margin: 50px auto
+        font-family: Arial, sans-serif
+
+      .error
+        color: red
+
+      .form-group
+        margin-bottom: 15px
+
+      input
+        width: 100%
+        padding: 8px
+        margin-top: 5px
+
+      button
+        padding: 10px
+        background-color: #007bff
+        color: white
+        border: none
+        cursor: pointer
+
+        &:hover
+          background-color: #0056b3
+
   body
     .container
       h2 Login
@@ -22,12 +49,3 @@ html
           label for="password" Password:
           input#password type="password" name="password" required=true
         button type="submit" Login
-
-    style
-      |
-        .container { max-width: 400px; margin: 50px auto; font-family: Arial, sans-serif; }
-        .error { color: red; }
-        .form-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 8px; margin-top: 5px; }
-        button { padding: 10px; background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }

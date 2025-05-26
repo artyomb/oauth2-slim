@@ -15,12 +15,10 @@ gem 'rackup'
 gem 'rack-cors'
 gem 'rack-sassc'
 
-
 gem 'jwt'
 
-gem 'opentelemetry-sdk'
-gem 'opentelemetry-exporter-otlp'
-gem 'opentelemetry-instrumentation-all'
+gem 'stack-service-base'
+#, path: '/home/user/projects/stack-service-base'
 
 group :development do
   gem 'rubocop'

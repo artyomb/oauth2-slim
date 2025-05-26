@@ -1,0 +1,11 @@
+link href="/css/style.sass" rel="stylesheet" type="text/css"
+
+ruby:
+  access_token = request.cookies['token']
+  token = JWT.decode access_token, '', false, algorithm: 'RS256' rescue {}
+
+b Token:
+pre= JSON.pretty_generate(token[0])
+
+/ div: a href='/access_management' Access Management
+/ div: a href='/oauth_back/logout' Logout
