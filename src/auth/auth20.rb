@@ -45,6 +45,12 @@ module Auth20
         # client_id = request.form.get('client_id')
         # client_secret = request.form.get('client_secret')
         # code = request.form.get('code')
+        $stdout.puts "=== POST /token Environment ==="
+        request.env.each { |k, v| $stdout.puts "#{k}: #{v}" }
+        $stdout.puts "POST params: #{params.inspect}"
+        $stdout.puts "Request body: #{request.body.read}"
+        request.body.rewind # Сбросить указатель
+        $stdout.puts "=========================="
         p (request.form_hash rescue { form_hash: false })
 
         client_id = 1
