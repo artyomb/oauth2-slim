@@ -15,7 +15,7 @@ Slim::Engine.set_options pretty: true
 use Rack::Static, urls: ["/"], root: "public", cascade: true
 use Rack::SassC, css_location: "#{__dir__}/public/css", scss_location: "#{__dir__}/public/css",
     create_map_file: true, syntax: :sass, check: true, cache: ENV['RACK_ENV'] == 'production'
-use Rack::Session::Cookie, key: 'rack.session', path: '/', secret: 'secret_stuff123'
+# use Rack::Session::Cookie, key: 'rack.session', path: '/', secret: 'secret_stuff123'
 
 helpers Auth20, AuthForward
 
