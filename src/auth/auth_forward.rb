@@ -49,7 +49,7 @@ module AuthForward
             path = request.env['HTTP_X_FORWARDED_URI']
             full_uri = "#{proto}://#{host}#{path}"
             full_uri_short = full_uri.split('?')[0]
-            redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
+            redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri_short)}", 302
           end
         end
       end
