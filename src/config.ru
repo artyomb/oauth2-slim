@@ -12,7 +12,18 @@ StackServiceBase.rack_setup self
 
 Slim::Engine.set_options pretty: true
 use Rack::MethodOverride
-use Rack::Static, urls: ["/"], root: "public", cascade: true
+use Rack::Static, urls: [/\.(js|map)$/], root: "public", cascade: true, index: false, header_rules: [
+  [:all, { 'Cache-Control' => 'public, max-age=31536000, immutable' }]
+]
+use Rack::Static, urls: [/\.(css)$/], root: "public", cascade: true, index: false, header_rules: [
+  [:all, { 'Cache-Control' => 'public, max-age=31536000, immutable' }]
+]
+use Rack::Static, urls: [/\.(png|jpg|jpeg|gif|ico|webp|avif)$/], root: "public", cascade: true, index: false, header_rules: [
+  [:all, { 'Cache-Control' => 'public, max-age=31536000' }]
+]
+use Rack::Static, urls: [/\.(woff|woff2|ttf|svg|eot)$/], root: "public", cascade: true, index: false, header_rules: [
+  [:all, { 'Cache-Control' => 'public, max-age=31536000' }]
+]
 use Rack::SassC, css_location: "#{__dir__}/public/css", scss_location: "#{__dir__}/public/css",
     create_map_file: true, syntax: :sass, check: true, cache: ENV['RACK_ENV'] == 'production'
 # use Rack::Session::Cookie, key: 'rack.session', path: '/', secret: 'secret_stuff123'
