@@ -17,6 +17,11 @@ module AuthForward
     base.class_eval do
 
       get '/auth' do
+        $stdout.puts "=== Request Environment ==="
+        request.env.each do |key, value|
+          $stdout.puts "#{key}: #{value}"
+        end
+        $stdout.puts "=========================="
         token = request.cookies['auth_token']
         if valid_token? token
           status 200
