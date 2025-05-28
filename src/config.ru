@@ -12,7 +12,8 @@ StackServiceBase.rack_setup self
 
 Slim::Engine.set_options pretty: true
 
-use Rack::Static, urls: [""], root: "public", cascade: true, index: false, header_rules: [
+# use Rack::Static, urls: ["/"], root: "public", cascade: true
+use Rack::Static, urls: ["/"], root: "public", cascade: true, index: false, header_rules: [
   [:all, { 'Cache-Control' => 'public, max-age=31536000' }],
   [%w(js css), { 'Cache-Control' => 'public, max-age=31536000, immutable' }]
 ]
