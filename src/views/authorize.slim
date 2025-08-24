@@ -18,7 +18,13 @@ html
       .form-group
         margin-bottom: 15px
 
+      .bot_link
+        color: #9b5900
+        float: right
+        text-decoration: none
+
       input
+        box-sizing: border-box
         width: 100%
         padding: 8px
         margin-top: 5px
@@ -41,16 +47,20 @@ html
 
   body
     .container
-      h2 Login
+      / h2 Login
       - if error
         p.error = error
+      -if auth_bot
+        - scope = scope
+        a.bot_link target="_blank" href=%[https://t.me/#{auth_bot}?start=#{Base64.strict_encode64 scope}] Slim Auth
       form method="get" action="/authorize"
         input type="hidden" name="redirect_uri" value=redirect_uri
         input type="hidden" name="state" value=state
         input type="hidden" name="client_id" value=client_id
-        .form-group
-          label for="scope" Scope:
-          input#scope type="text" name="scope" value=scope  readonly=true
+        -unless auth_bot
+          .form-group
+            label for="scope" Scope:
+            input#scope type="text" name="scope" value=scope  readonly=true
         .form-group
           label for="signature" Signature:
           input#signature name="signature" required=true

@@ -13,6 +13,7 @@ module AuthForward
   FORWARD_OAUTH_AUTH_URL = ENV['FORWARD_OAUTH_AUTH_URL']
   AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
   AUTH_SCOPE = ENV['AUTH_SCOPE']
+  AUTH_BOT=ENV['AUTH_BOT']
   AUTH_CODES = {}
 
   def self.included(base)
@@ -58,8 +59,6 @@ module AuthForward
 
       get '*authorize' do
         redirect_uri = params[:redirect_uri]
-        state = params[:state]
-        client_id = params[:client_id]
 
         scope = AUTH_SCOPE || request.env['HTTP_HOST']
         signature = params[:signature]
@@ -79,10 +78,10 @@ module AuthForward
             AUTH_CODES[authorization_code] = true
             redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
           else
-            slim :authorize, locals: { redirect_uri:, state:, client_id:, scope:, error:'Invalid authorization' }
+            slim :authorize, locals: { redirect_uri:, scope:, auth_bot: AUTH_BOT, error:'Invalid authorization' }
           end
         else
-          slim :authorize, locals: { redirect_uri:, state:, client_id:, scope:, error: nil }
+          slim :authorize, locals: { redirect_uri:, scope:, auth_bot: AUTH_BOT, error: nil }
         end
       end
 
