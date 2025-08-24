@@ -1,0 +1,57 @@
+doctype html
+html
+  head
+    title Auth
+    meta charset="utf-8"
+    meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no"
+    link href="/css/style.css" rel="stylesheet" type="text/css"
+    link href="/assets/favicon.ico" rel="shortcut icon" type="image/x-icon"
+    sass:
+      .container
+        max-width: 400px
+        margin: 50px auto
+        font-family: Arial, sans-serif
+
+      .error
+        color: red
+
+      .form-group
+        margin-bottom: 15px
+
+      input
+        width: 100%
+        padding: 8px
+        margin-top: 5px
+        &:read-only
+          background: #bcbcbc
+          border-color: transparent
+          color: #525252
+          &:focus-visible
+            outline: 0
+
+      button
+        padding: 10px
+        background-color: #007bff
+        color: white
+        border: none
+        cursor: pointer
+
+        &:hover
+          background-color: #0056b3
+
+  body
+    .container
+      h2 Login
+      - if error
+        p.error = error
+      form method="get" action="/authorize"
+        input type="hidden" name="redirect_uri" value=redirect_uri
+        input type="hidden" name="state" value=state
+        input type="hidden" name="client_id" value=client_id
+        .form-group
+          label for="scope" Scope:
+          input#scope type="text" name="scope" value=scope  readonly=true
+        .form-group
+          label for="signature" Signature:
+          input#signature name="signature" required=true
+        button type="submit" Login

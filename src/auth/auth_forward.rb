@@ -2,6 +2,7 @@ require 'net/http'
 require 'jwt'
 require 'json'
 require 'digest'
+require "ed25519"
 
 $stdout.sync=true
 module AuthForward
@@ -10,7 +11,8 @@ module AuthForward
   PRIVATE_KEY = OpenSSL::PKey::RSA.new(KEY_TEXT)
   PUBLIC_KEY = PRIVATE_KEY.public_key
   FORWARD_OAUTH_AUTH_URL = ENV['FORWARD_OAUTH_AUTH_URL']
-  FORWARD_OAUTH_TOKEN_URL = ENV['FORWARD_OAUTH_TOKEN_URL']
+  AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
+  AUTH_SCOPE = ENV['AUTH_SCOPE']
   AUTH_CODES = {}
 
   def self.included(base)
@@ -54,19 +56,33 @@ module AuthForward
         end
       end
 
-      get '/authorize' do
+      get '*authorize' do
         redirect_uri = params[:redirect_uri]
         state = params[:state]
         client_id = params[:client_id]
-        username = params[:username]
-        password = params[:password]
 
-        if username == 'admin' && password == 'admin'
-          authorization_code = SecureRandom.hex(16)
-          AUTH_CODES[authorization_code] = true
-          redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+        scope = AUTH_SCOPE || request.env['HTTP_HOST']
+        signature = params[:signature]
+
+        if scope && signature
+          verify_key  = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
+          scope2, time, sig = signature.split '|'
+          message = "#{scope}|#{time}"
+
+          sig = [sig].pack('H*')
+          t1 = scope2 == scope
+          t2 = Time.now.to_i - time.to_i < 30
+          t3 = verify_key.verify(sig, message) rescue false
+
+          if t1 && t2 && t3
+            authorization_code = SecureRandom.hex(16)
+            AUTH_CODES[authorization_code] = true
+            redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+          else
+            slim :authorize, locals: { redirect_uri:, state:, client_id:, scope:, error:'Invalid authorization' }
+          end
         else
-          slim :login, locals: { redirect_uri:, state:, client_id:, error: password ? 'Invalid username or password' : nil }
+          slim :authorize, locals: { redirect_uri:, state:, client_id:, scope:, error: nil }
         end
       end
 
