@@ -17,4 +17,12 @@ not_found { '404 page' }
 get '/', &-> { slim :index }
 get '*favicon.ico', &-> { '' }
 
+disable :show_exceptions unless ENV['DEBUG']
+error do
+  status 500
+  $stderr.puts "Exception: #{env['sinatra.error']}"
+  $stderr.puts "Exception backtrace: #{env['sinatra.error'].backtrace[0..10].join("\n")}"
+  { error: "Internal server error", message: env['sinatra.error'].message }.to_json
+end
+
 run Sinatra::Application

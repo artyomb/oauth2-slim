@@ -52,13 +52,14 @@ module AuthForward
             path = request.env['HTTP_X_FORWARDED_URI']
             full_uri = "#{proto}://#{host}#{path}"
             full_uri_short = full_uri.split('?')[0]
-            redirect "#{FORWARD_OAUTH_AUTH_URL}?client_id=your-client-id&redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
+            redirect "#{FORWARD_OAUTH_AUTH_URL}?redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
           end
         end
       end
 
       get '*authorize' do
         redirect_uri = params[:redirect_uri]
+        state = params[:state]
 
         scope = AUTH_SCOPE || request.env['HTTP_HOST']
         signature = params[:signature]
@@ -78,10 +79,10 @@ module AuthForward
             AUTH_CODES[authorization_code] = true
             redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
           else
-            slim :authorize, locals: { redirect_uri:, scope:, auth_bot: AUTH_BOT, error:'Invalid authorization' }
+            slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error:'Invalid authorization' }
           end
         else
-          slim :authorize, locals: { redirect_uri:, scope:, auth_bot: AUTH_BOT, error: nil }
+          slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil }
         end
       end
 
