@@ -40,10 +40,10 @@ module AuthForward
               'sub': 'admin',
               'login': 'admin',
               'role': 'Admin',
-              'exp': Time.now.to_i + 3600,
+              'exp': Time.now.to_i + 12 * 3600,
               'iat': Time.now.to_i
             }, PRIVATE_KEY, 'RS256')
-            response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 3600, httponly: true)
+            response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
             AUTH_CODES.delete(parsed_params['code'])
             redirect parsed_params['state']
           else
