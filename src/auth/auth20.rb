@@ -110,7 +110,7 @@ module Auth20
           role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
-          email: "admin@localhost",
+          email: "admin@localhost.net",
           # birthdate: "1975-12-31",
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
