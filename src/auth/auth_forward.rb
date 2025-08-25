@@ -57,7 +57,7 @@ module AuthForward
         end
       end
 
-      get '*authorize' do
+      get %r{.*/authorize} do
         redirect_uri = params[:redirect_uri]
         state = params[:state]
 

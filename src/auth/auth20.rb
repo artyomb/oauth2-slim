@@ -85,7 +85,12 @@ module Auth20
       end
 
       # https://connect2id.com/products/server/docs/api/userinfo
-      get '*user' do
+      get %r{.*/user} do
+        $stdout.puts "=== USER Request ==="
+        request.env.each do |key, value|
+          $stdout.puts "#{key}: #{value}"
+        end
+
         # request_headers.HTTP_AUTHORIZATION = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3lvdXItZG9tYWluLmNvbSIsInN1YiI6ImFkbWluIiwiYXVkIjoxLCJleHAiOjE3MzQyMTk2OTksImlhdCI6MTczNDIxNjA5OSwianRpIjoiVW5pcXVlIHRva2VuIElEIiwic2NvcGUiOiJhbGxvd2VkX3Njb3BlcyJ9.3IJtY4EaQ0lkxtKiEtKp7piZMRjgWmHbaRKDp9Ny78tLN4q7CY13laJ_btoTBEat21lse1LWenc_ZRNuR7AzXXvX5jn04tfXpzth7NejfFCIA3UtIpAoWG_suPFzs9E3950f_QzO9hwcu0xaYTezKhk_s9CC6_2nPnX2DuBw8F3GIM5jCCrvyc4dWP_Guz64aUWDN6R9c8VyEUSWF6LdNB50peLHhc_gWDknqZef-dmC7jB0LKs0lpCvWlcirbDEgaKvVZ3H5q8UpsPGy-ds5XD284sateHetU9MPfV4ZcasCPP8UnejjC0R5gLyCrx7ulfN6tyT5tSvev0a836uew"
         begin
           token = headers['Authorization'][/Bearer (.*)/, 1]
@@ -98,7 +103,7 @@ module Auth20
         end
         content_type :json
         # OR Content-Type: application/jwt
-        {
+        response = {
           sub: "admin",
           # id: 'admin',
           login: 'admin',  # for grafana?
@@ -110,6 +115,9 @@ module Auth20
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
         }.to_json
+        $stdout.puts "response: #{response}"
+
+        response
       end
 
       get '/logout' do
