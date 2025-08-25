@@ -65,9 +65,10 @@ module AuthForward
         signature = params[:signature]
 
         if scope && signature
-          verify_key  = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
-          scope2, time, sig = signature.split '|'
-          message = "#{scope}|#{time}"
+          verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
+          signature_str = Zlib::Inflate.inflate Base64.decode64(signature)
+          scope2, time, login, sig = signature_str.split '|'
+          message = "#{scope}|#{time}|#{login}"
 
           sig = [sig].pack('H*')
           t1 = scope2 == scope
@@ -75,11 +76,13 @@ module AuthForward
           t3 = verify_key.verify(sig, message) rescue false
 
           if t1 && t2 && t3
+            LOGGER.info "Slim auth LOGIN Successful: #{message}"
             authorization_code = SecureRandom.hex(16)
             AUTH_CODES[authorization_code] = true
             redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
           else
-            slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error:'Invalid authorization' }
+            LOGGER.info "Slim auth LOGIN failed: #{message}"
+            slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }
           end
         else
           slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil }
