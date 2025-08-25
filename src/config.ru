@@ -5,12 +5,13 @@ require 'slim'
 require 'rack/sassc'
 require_relative 'auth/auth20'
 require_relative 'auth/auth_forward'
+require_relative 'auth/openid_connect'
 
 require 'stack-service-base'
 
 StackServiceBase.rack_setup self
 
-helpers Auth20, AuthForward
+helpers Auth20, AuthForward, OpenIDConnect
 
 not_found { '404 page' }
 
