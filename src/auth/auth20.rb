@@ -40,7 +40,7 @@ module Auth20
       # client_secret=portainer_secret&
       # code=%7Bauthorization_code%7D&
       # grant_type=authorization_code"
-      post '/token' do
+      post %r{.*/token} do
         # grant_type = request.form.get('grant_type')
         # client_id = request.form.get('client_id')
         # client_secret = request.form.get('client_secret')
