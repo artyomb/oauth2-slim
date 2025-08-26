@@ -88,11 +88,24 @@ module AuthForward
       end
 
       get %r{.*/authorize} do
+        token = request.cookies['auth_token']
+
         redirect_uri = params[:redirect_uri]
         state = params[:state]
 
         scope = AUTH_SCOPE || request.env['HTTP_HOST']
         signature = params[:signature]
+
+        if valid_token? token
+          decoded = JWT.decode(token, PUBLIC_KEY, true, { algorithm: 'RS256' }).first
+          LOGGER.info 'AUTHORIZE BY TOKEN'
+          authorization_code = SecureRandom.hex(16)
+          AUTH_CODES[authorization_code] = { scope:, time: Time.now.to_i, login: decoded['login']}
+          LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
+          LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}&state=#{state}"
+
+          redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+        end
 
         if scope && signature
           verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
