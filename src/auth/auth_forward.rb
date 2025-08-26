@@ -33,7 +33,7 @@ module AuthForward
     parsed_params = Rack::Utils.parse_nested_query(query[0].to_s).merge({'state' => query[1]})
     $stdout.puts "parsed_params: #{parsed_params}"
     if parsed_params.key?('code') && AUTH_CODES.key?(parsed_params['code'])
-      attributes = AUTH_CODES[parsed_params['code']].slice(scope:, login:)
+      attributes = AUTH_CODES[parsed_params['code']].slice(:scope, :login)
       generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
 
       AUTH_CODES.delete parsed_params['code']

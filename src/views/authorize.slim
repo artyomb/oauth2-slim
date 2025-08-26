@@ -44,6 +44,9 @@ html
 
         &:hover
           background-color: #0056b3
+      .version
+        opacity: 0.5
+        float: right
 
   body
     .container
@@ -63,4 +66,5 @@ html
         .form-group
           label for="signature" Signature:
           input#signature name="signature" required=true
+          span.version = "v" + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
         button type="submit" Login
