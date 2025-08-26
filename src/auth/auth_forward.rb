@@ -30,15 +30,16 @@ module AuthForward
     path = request.env['HTTP_X_FORWARDED_URI']
     query = path[/\?(.*)/, 1].to_s.split('&state=', 2)
     parsed_params = Rack::Utils.parse_nested_query(query[0].to_s).merge({'state' => query[1]})
-    $stdout.puts "parsed_params: #{parsed_params}"
-    if parsed_params.key?('code')
+
+    code = parsed_params['code']
+    if code
       LOGGER.info "FORWARD_AUTH code: #{code}"
       LOGGER.info "AUTH_CODES: #{AUTH_CODES}"
-      if AUTH_CODES.key?(parsed_params['code'])
-        attributes = AUTH_CODES[parsed_params['code']].slice(:scope, :login)
+      if AUTH_CODES.key? code
+        attributes = AUTH_CODES[code].slice(:scope, :login)
         generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
 
-        AUTH_CODES.delete parsed_params['code']
+        AUTH_CODES.delete code
         redirect parsed_params['state']
       else
         LOGGER.info "AUTH_CODES not found: #{code}"
