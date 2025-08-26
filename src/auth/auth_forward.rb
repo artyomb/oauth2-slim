@@ -9,7 +9,12 @@ $stdout.sync=true
 FORWARD_AUTH = {}
 
 def forward_auth(&block)
-  FORWARD_AUTH[:method] = block
+  FORWARD_AUTH[:method] = lambda do
+    block.call
+  rescue => e
+    $stdout.puts e.message
+    halt 401, 'Unauthorized'
+  end
 end
 
 module AuthForward
