@@ -76,11 +76,6 @@ module AuthForward
       end
 
       get '/auth' do
-        # $stdout.puts "=== Request Environment ==="
-        # request.env.each do |key, value|
-        #   $stdout.puts "#{key}: #{value}"
-        # end
-        # $stdout.puts "=========================="
         token = request.cookies['auth_token']
         if valid_token? token
           status 200
@@ -90,37 +85,39 @@ module AuthForward
         end
       end
 
-      get %r{.*/authorize} do
-        redirect_uri = params[:redirect_uri]
-        state = params[:state]
+      if FORWARD_OAUTH_AUTH_URL
+        get %r{.*/authorize} do
+          redirect_uri = params[:redirect_uri]
+          state = params[:state]
 
-        scope = AUTH_SCOPE || request.env['HTTP_HOST']
-        signature = params[:signature]
+          scope = AUTH_SCOPE || request.env['HTTP_HOST']
+          signature = params[:signature]
 
-        if scope && signature
-          verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
-          signature_str = Zlib::Inflate.inflate Base64.decode64(signature)
-          scope2, time, login, sig = signature_str.split '|'
-          message = "#{scope}|#{time}|#{login}"
+          if scope && signature
+            verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
+            signature_str = Zlib::Inflate.inflate Base64.decode64(signature)
+            scope2, time, login, sig = signature_str.split '|'
+            message = "#{scope}|#{time}|#{login}"
 
-          sig = [sig].pack('H*')
-          t1 = scope2 == scope
-          t2 = Time.now.to_i - time.to_i < 30
-          t3 = verify_key.verify(sig, message) rescue false
+            sig = [sig].pack('H*')
+            t1 = scope2 == scope
+            t2 = Time.now.to_i - time.to_i < 30
+            t3 = verify_key.verify(sig, message) rescue false
 
-          if t1 && t2 && t3
-            LOGGER.info "Slim auth LOGIN Successful: #{message}"
-            authorization_code = SecureRandom.hex(16)
-            AUTH_CODES[authorization_code] = { scope:, time:, login: }
-            LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
+            if t1 && t2 && t3
+              LOGGER.info "Slim auth LOGIN Successful: #{message}"
+              authorization_code = SecureRandom.hex(16)
+              AUTH_CODES[authorization_code] = { scope:, time:, login: }
+              LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
 
-            redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+              redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+            else
+              LOGGER.info "Slim auth LOGIN failed: #{message}"
+              slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }
+            end
           else
-            LOGGER.info "Slim auth LOGIN failed: #{message}"
-            slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }
+            slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil }
           end
-        else
-          slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil }
         end
       end
 

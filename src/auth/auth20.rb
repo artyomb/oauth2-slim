@@ -84,62 +84,64 @@ module Auth20
         }.to_json
       end
 
-      post %r{.*/token} do
-        # grant_type = request.form.get('grant_type')
-        # client_id = request.form.get('client_id')
-        # client_secret = request.form.get('client_secret')
-        code = params['code']
-        raise 'Invalid code' if code.to_s.empty?
-        raise "Code not found: #{code}" unless AUTH_CODES.key? code
+      if FORWARD_OAUTH_AUTH_URL
+        post %r{.*/token} do
+          # grant_type = request.form.get('grant_type')
+          # client_id = request.form.get('client_id')
+          # client_secret = request.form.get('client_secret')
+          code = params['code']
+          raise 'Invalid code' if code.to_s.empty?
+          raise "Code not found: #{code}" unless AUTH_CODES.key? code
 
-        attributes = AUTH_CODES[code].slice(:scope, :login)
-        access_token = generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
-        content_type :json
-        {
-          "access_token": access_token,
-          'token_type': 'Bearer',
-          "token_format": 'jwt',
-          "token_algorithm": 'RS256',
-          'expires_in': 3600,
-          'refresh_token': 'refresh_token',
-          'scope': 'allowed_scopes'
-        }.to_json
-      end
-
-      # https://connect2id.com/products/server/docs/api/userinfo
-      get %r{.*/user} do
-        $stdout.puts "=== USER Request ==="
-        request.env.each do |key, value|
-          $stdout.puts "#{key}: #{value}"
+          attributes = AUTH_CODES[code].slice(:scope, :login)
+          access_token = generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
+          content_type :json
+          {
+            "access_token": access_token,
+            'token_type': 'Bearer',
+            "token_format": 'jwt',
+            "token_algorithm": 'RS256',
+            'expires_in': 3600,
+            'refresh_token': 'refresh_token',
+            'scope': 'allowed_scopes'
+          }.to_json
         end
 
-        # request_headers.HTTP_AUTHORIZATION = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3lvdXItZG9tYWluLmNvbSIsInN1YiI6ImFkbWluIiwiYXVkIjoxLCJleHAiOjE3MzQyMTk2OTksImlhdCI6MTczNDIxNjA5OSwianRpIjoiVW5pcXVlIHRva2VuIElEIiwic2NvcGUiOiJhbGxvd2VkX3Njb3BlcyJ9.3IJtY4EaQ0lkxtKiEtKp7piZMRjgWmHbaRKDp9Ny78tLN4q7CY13laJ_btoTBEat21lse1LWenc_ZRNuR7AzXXvX5jn04tfXpzth7NejfFCIA3UtIpAoWG_suPFzs9E3950f_QzO9hwcu0xaYTezKhk_s9CC6_2nPnX2DuBw8F3GIM5jCCrvyc4dWP_Guz64aUWDN6R9c8VyEUSWF6LdNB50peLHhc_gWDknqZef-dmC7jB0LKs0lpCvWlcirbDEgaKvVZ3H5q8UpsPGy-ds5XD284sateHetU9MPfV4ZcasCPP8UnejjC0R5gLyCrx7ulfN6tyT5tSvev0a836uew"
-        begin
-          token = request.env["HTTP_AUTHORIZATION"][/Bearer (.*)/, 1]
-          puts "token: #{token}"
-          access_token = JWT.decode token, '', false, algorithm: 'RS256'
-          p access_token
-        rescue => e
-          $stderr.puts e.message
-          $stderr.puts e.backtrace.join("\n")
-        end
-        content_type :json
-        # OR Content-Type: application/jwt
-        response = {
-          # sub: "admin",
-          # id: 'admin',
-          login: access_token['login'],  # for grafana?
-          role: 'admin',  # for grafana?
-          # username: 'admin',  # for grafana?
-          # name: 'admin',
-          email: access_token['email'],
-          # birthdate: "1975-12-31",
-          # "https://claims.example.com/department": "engineering",
-          # picture: "https://example.com/83692/photo.jpg"
-        }.to_json
-        $stdout.puts "response: #{response}"
+        # https://connect2id.com/products/server/docs/api/userinfo
+        get %r{.*/user} do
+          $stdout.puts "=== USER Request ==="
+          request.env.each do |key, value|
+            $stdout.puts "#{key}: #{value}"
+          end
 
-        response
+          # request_headers.HTTP_AUTHORIZATION = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3lvdXItZG9tYWluLmNvbSIsInN1YiI6ImFkbWluIiwiYXVkIjoxLCJleHAiOjE3MzQyMTk2OTksImlhdCI6MTczNDIxNjA5OSwianRpIjoiVW5pcXVlIHRva2VuIElEIiwic2NvcGUiOiJhbGxvd2VkX3Njb3BlcyJ9.3IJtY4EaQ0lkxtKiEtKp7piZMRjgWmHbaRKDp9Ny78tLN4q7CY13laJ_btoTBEat21lse1LWenc_ZRNuR7AzXXvX5jn04tfXpzth7NejfFCIA3UtIpAoWG_suPFzs9E3950f_QzO9hwcu0xaYTezKhk_s9CC6_2nPnX2DuBw8F3GIM5jCCrvyc4dWP_Guz64aUWDN6R9c8VyEUSWF6LdNB50peLHhc_gWDknqZef-dmC7jB0LKs0lpCvWlcirbDEgaKvVZ3H5q8UpsPGy-ds5XD284sateHetU9MPfV4ZcasCPP8UnejjC0R5gLyCrx7ulfN6tyT5tSvev0a836uew"
+          begin
+            token = request.env["HTTP_AUTHORIZATION"][/Bearer (.*)/, 1]
+            puts "token: #{token}"
+            access_token = JWT.decode token, '', false, algorithm: 'RS256'
+            p access_token
+          rescue => e
+            $stderr.puts e.message
+            $stderr.puts e.backtrace.join("\n")
+          end
+          content_type :json
+          # OR Content-Type: application/jwt
+          response = {
+            # sub: "admin",
+            # id: 'admin',
+            login: access_token['login'],  # for grafana?
+            role: 'admin',  # for grafana?
+            # username: 'admin',  # for grafana?
+            # name: 'admin',
+            email: access_token['email'],
+            # birthdate: "1975-12-31",
+            # "https://claims.example.com/department": "engineering",
+            # picture: "https://example.com/83692/photo.jpg"
+          }.to_json
+          $stdout.puts "response: #{response}"
+
+          response
+        end
       end
 
       get '/logout' do
