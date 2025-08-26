@@ -90,9 +90,9 @@ module Auth20
         # client_secret = request.form.get('client_secret')
         code = params['code']
         raise 'Invalid code' if code.to_s.empty?
-        raise 'Code not found' unless AuthForward::AUTH_CODES.key? code
+        raise "Code not found: #{code}" unless AuthForward::AUTH_CODES.key? code
 
-        attributes = AuthForward::AUTH_CODES[code].slice(:scope, :login)
+        attributes = AUTH_CODES[code].slice(:scope, :login)
         access_token = generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
         content_type :json
         {
