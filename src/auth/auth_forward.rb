@@ -71,7 +71,6 @@ module AuthForward
           }
           access_token = JWT.encode(data, PRIVATE_KEY, 'RS256')
           response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
-          headers['X-Token'] = data
           access_token
         end
       end
@@ -140,9 +139,9 @@ module AuthForward
 
         decoded = JWT.decode(token, PUBLIC_KEY, true, { algorithm: 'RS256' }).first
 
-        return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
+        # return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
         return false unless decoded['exp'].to_i > Time.now.to_i
-        set_x_token decoded
+        headers['X-Token'] = decoded
         true
       rescue StandardError => _e
         false
