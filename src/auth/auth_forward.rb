@@ -70,7 +70,7 @@ module AuthForward
           }
           access_token = JWT.encode(data, PRIVATE_KEY, 'RS256')
           response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
-          headers['X-Token'] = token.to_json
+          headers['X-Token'] = data
           access_token
         end
       end
