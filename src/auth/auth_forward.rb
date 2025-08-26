@@ -27,17 +27,19 @@ module AuthForward
   AUTH_BOT = ENV['AUTH_BOT']
   AUTH_CODES = {}
 
-  FORWARD_AUTH[:method] =  ->() do
+  FORWARD_AUTH[:method] = -> do
     path = request.env['HTTP_X_FORWARDED_URI']
     query = path[/\?(.*)/, 1].to_s.split('&state=', 2)
     parsed_params = Rack::Utils.parse_nested_query(query[0].to_s).merge({'state' => query[1]})
     $stdout.puts "parsed_params: #{parsed_params}"
     if parsed_params.key?('code') && AUTH_CODES.key?(parsed_params['code'])
-      generate_token
-      AUTH_CODES.delete(parsed_params['code'])
+      attributes = AUTH_CODES[parsed_params['code']].slice(scope:, login:)
+      generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
+
+      AUTH_CODES.delete parsed_params['code']
       redirect parsed_params['state']
     else
-      proto, host, path =  %w[PROTO HOST URI].map { |type| request.env["HTTP_X_FORWARDED_#{type}"] }
+      proto, host, path = %w[PROTO HOST URI].map { request.env["HTTP_X_FORWARDED_#{it}"] }
       full_uri = "#{proto}://#{host}#{path}"
       full_uri_short = full_uri.split('?')[0]
       redirect "#{FORWARD_OAUTH_AUTH_URL}?redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
@@ -51,13 +53,13 @@ module AuthForward
       helpers do
         def generate_token(external = {})
           data = {
-            'iss': "#{FORWARD_OAUTH_AUTH_URL}",
-            'sub': 'admin',
-            'login': 'admin',
-            'role': 'Admin',
-            **external,
-            'exp': Time.now.to_i + 12 * 3600,
-            'iat': Time.now.to_i
+            iss: FORWARD_OAUTH_AUTH_URL.to_s,
+            sub: 'fake',
+            login: 'false',
+            role: 'fake',
+            **external.transform_keys(&:to_sym),
+            exp: Time.now.to_i + 12 * 3600,
+            iat: Time.now.to_i
           }
           access_token = JWT.encode(data, PRIVATE_KEY, 'RS256')
           response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
@@ -110,7 +112,7 @@ module AuthForward
           if t1 && t2 && t3
             LOGGER.info "Slim auth LOGIN Successful: #{message}"
             authorization_code = SecureRandom.hex(16)
-            AUTH_CODES[authorization_code] = true
+            AUTH_CODES[authorization_code] = { scope:, time:, login: }
             redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
           else
             LOGGER.info "Slim auth LOGIN failed: #{message}"

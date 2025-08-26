@@ -104,17 +104,17 @@ module Auth20
         content_type :json
         # OR Content-Type: application/jwt
         response = {
-          sub: "admin",
-          # id: 'admin',
-          login: 'admin',  # for grafana?
-          role: 'admin',  # for grafana?
-          # username: 'admin',  # for grafana?
-          # name: 'admin',
-          email: "admin@localhost.net",
+          sub: access_token['sub'], # unique ID for the user
+          login: access_token['login'],
+          scope: access_token['scope'],
+          role: access_token['role'], # for grafana?
+          username: access_token['username'], # for grafana?
+          name: access_token['name'],
+          email: access_token['email']
           # birthdate: "1975-12-31",
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
-        }.to_json
+        }.compact.to_json
         $stdout.puts "response: #{response}"
 
         response
