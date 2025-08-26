@@ -61,6 +61,7 @@ module AuthForward
         end
 
         def set_x_token(token)
+          puts "set X_Token: #{token.to_json}"
           headers['X-Token'] = token.to_json
         end
 
