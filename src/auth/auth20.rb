@@ -40,7 +40,7 @@ module Auth20
       # client_secret=portainer_secret&
       # code=%7Bauthorization_code%7D&
       # grant_type=authorization_code"
-      post %r{.*/token} do
+      post %r{.*/token_old} do
         # grant_type = request.form.get('grant_type')
         # client_id = request.form.get('client_id')
         # client_secret = request.form.get('client_secret')
@@ -84,6 +84,28 @@ module Auth20
         }.to_json
       end
 
+      post %r{.*/token} do
+        # grant_type = request.form.get('grant_type')
+        # client_id = request.form.get('client_id')
+        # client_secret = request.form.get('client_secret')
+        code = request.form.get('code')
+        raise 'Invalid code' if code.to_s.empty?
+        raise 'Code not found' unless AuthForward::AUTH_CODES.key? code
+
+        attributes = AuthForward::AUTH_CODES[code].slice(:scope, :login)
+        access_token = generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
+        content_type :json
+        {
+          "access_token": access_token,
+          'token_type': 'Bearer',
+          "token_format": 'jwt',
+          "token_algorithm": 'RS256',
+          'expires_in': 3600,
+          'refresh_token': 'refresh_token',
+          'scope': 'allowed_scopes'
+        }.to_json
+      end
+
       # https://connect2id.com/products/server/docs/api/userinfo
       get %r{.*/user} do
         $stdout.puts "=== USER Request ==="
@@ -104,13 +126,13 @@ module Auth20
         content_type :json
         # OR Content-Type: application/jwt
         response = {
-          sub: "admin",
+          # sub: "admin",
           # id: 'admin',
-          login: 'admin',  # for grafana?
+          login: access_token['login'],  # for grafana?
           role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
           # name: 'admin',
-          email: "admin@localhost.net",
+          email: access_token['email'],
           # birthdate: "1975-12-31",
           # "https://claims.example.com/department": "engineering",
           # picture: "https://example.com/83692/photo.jpg"
