@@ -23,7 +23,7 @@ error do
   status 500
   $stderr.puts "Exception: #{env['sinatra.error']}"
   $stderr.puts "Exception backtrace: #{env['sinatra.error'].backtrace[0..10].join("\n")}"
-  { error: "Internal server error", message: env['sinatra.error'].message }.to_json
+  { error: "Internal server error", message: env['sinatra.error'].message, backtrace: env['sinatra.error'].backtrace[0..10] }.to_json
 end
 
 run Sinatra::Application
