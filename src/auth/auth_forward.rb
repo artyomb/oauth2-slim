@@ -46,6 +46,7 @@ module AuthForward
         halt 404, "AUTH_CODES not found: #{code}"
       end
     else
+      LOGGER.info "FORWARD_AUTH NO code - redirect to auth"
       proto, host, path = %w[PROTO HOST URI].map { request.env["HTTP_X_FORWARDED_#{it}"] }
       full_uri = "#{proto}://#{host}#{path}"
       full_uri_short = full_uri.split('?')[0]
@@ -78,9 +79,11 @@ module AuthForward
       get '/auth' do
         token = request.cookies['auth_token']
         if valid_token? token
+          LOGGER.info "AUTH TOKEN VALID"
           status 200
           'OK'
         else
+          LOGGER.error "AUTH TOKEN INVALID"
           instance_exec &FORWARD_AUTH[:method]
         end
       end
@@ -109,6 +112,7 @@ module AuthForward
               authorization_code = SecureRandom.hex(16)
               AUTH_CODES[authorization_code] = { scope:, time:, login: }
               LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
+              LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}&state=#{state}"
 
               redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
             else
