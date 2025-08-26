@@ -7,7 +7,6 @@ require 'faraday'
 
 $stdout.sync=true
 FORWARD_AUTH = {}
-AUTH_CODES = {}
 
 def forward_auth(&block)
   FORWARD_AUTH[:method] = lambda do
@@ -26,6 +25,7 @@ module AuthForward
   AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
   AUTH_SCOPE = ENV['AUTH_SCOPE']
   AUTH_BOT = ENV['AUTH_BOT']
+  AUTH_CODES = {}
 
   FORWARD_AUTH[:method] = -> do
     path = request.env['HTTP_X_FORWARDED_URI']
