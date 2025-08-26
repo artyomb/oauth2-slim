@@ -88,7 +88,7 @@ module Auth20
         # grant_type = request.form.get('grant_type')
         # client_id = request.form.get('client_id')
         # client_secret = request.form.get('client_secret')
-        code = request.form.get('code')
+        code = params['code']
         raise 'Invalid code' if code.to_s.empty?
         raise 'Code not found' unless AuthForward::AUTH_CODES.key? code
 
