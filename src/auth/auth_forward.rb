@@ -18,7 +18,7 @@ AUTH_CODES = {}
 
 def forward_auth(&block)
   FORWARD_AUTH[:method] = lambda do
-    block.call
+    instance_exec &block
   rescue => e
     $stdout.puts e.message
     halt 401, 'Unauthorized'
