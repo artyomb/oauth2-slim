@@ -62,13 +62,14 @@ module AuthForward
         def generate_token(external = {})
           data = {
             iss: FORWARD_OAUTH_AUTH_URL.to_s,
-            sub: 'fake',
+            # sub: 'fake',
             login: 'false',
             role: 'fake',
             **external.transform_keys(&:to_sym),
             exp: Time.now.to_i + 12 * 3600,
             iat: Time.now.to_i
           }
+          # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
           access_token = JWT.encode(data, PRIVATE_KEY, 'RS256')
           response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
           access_token

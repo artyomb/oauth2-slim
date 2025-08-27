@@ -93,6 +93,8 @@ module Auth20
         raise "Code not found: #{code}" unless AUTH_CODES.key? code
 
         attributes = AUTH_CODES[code].slice(:scope, :login)
+        AUTH_CODES.delete code
+
         access_token = generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
         content_type :json
         {
