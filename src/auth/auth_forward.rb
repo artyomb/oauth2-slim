@@ -126,7 +126,13 @@ module AuthForward
             LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
             LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}&state=#{state}"
 
-            redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+            if params[:redirect]
+              redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
+            else
+              # SSO Session cookie WJT
+              generate_token scope:, login:, sso: true
+              slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: true }
+            end
           else
             LOGGER.info "Slim auth LOGIN failed: #{message}"
             slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }

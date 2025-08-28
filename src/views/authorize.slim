@@ -59,12 +59,17 @@ html
       form method="get" action="/authorize"
         input type="hidden" name="redirect_uri" value=redirect_uri
         input type="hidden" name="state" value=state
+        input type="hidden" name="redirect" value=locals[:redirect]
         -unless auth_bot
           .form-group
             label for="scope" Scope:
             input#scope type="text" name="scope" value=scope  readonly=true
         .form-group
           label for="signature" Signature:
-          input#signature name="signature" required=true
+          input#signature name="signature" required=true value=locals[:signature]
           span.version = "v " + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
         button type="submit" Login
+        javascript:
+          if ( #{locals[:redirect] ? true : false} ) {
+            document.forms[0].submit();
+          }
