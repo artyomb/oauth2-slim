@@ -126,7 +126,7 @@ module AuthForward
             LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
             LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}&state=#{state}"
 
-            if params[:redirect]
+            if params[:redirect] == true
               redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
             else
               # SSO Session cookie WJT
