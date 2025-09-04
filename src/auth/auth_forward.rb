@@ -10,6 +10,7 @@ $stdout.sync=true
 FORWARD_AUTH = {}
 
 KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
+system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
 
 if File.exist?(KEY_FILENAME)
   signature_key_hex = IO.read(KEY_FILENAME)
