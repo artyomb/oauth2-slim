@@ -113,7 +113,7 @@ module Auth20
         # request_headers.HTTP_AUTHORIZATION = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL3lvdXItZG9tYWluLmNvbSIsInN1YiI6ImFkbWluIiwiYXVkIjoxLCJleHAiOjE3MzQyMTk2OTksImlhdCI6MTczNDIxNjA5OSwianRpIjoiVW5pcXVlIHRva2VuIElEIiwic2NvcGUiOiJhbGxvd2VkX3Njb3BlcyJ9.3IJtY4EaQ0lkxtKiEtKp7piZMRjgWmHbaRKDp9Ny78tLN4q7CY13laJ_btoTBEat21lse1LWenc_ZRNuR7AzXXvX5jn04tfXpzth7NejfFCIA3UtIpAoWG_suPFzs9E3950f_QzO9hwcu0xaYTezKhk_s9CC6_2nPnX2DuBw8F3GIM5jCCrvyc4dWP_Guz64aUWDN6R9c8VyEUSWF6LdNB50peLHhc_gWDknqZef-dmC7jB0LKs0lpCvWlcirbDEgaKvVZ3H5q8UpsPGy-ds5XD284sateHetU9MPfV4ZcasCPP8UnejjC0R5gLyCrx7ulfN6tyT5tSvev0a836uew"
         token = request.env["HTTP_AUTHORIZATION"][/Bearer (.*)/, 1]
         puts "token: #{token}"
-        access_token = JWT.decode(token, PUBLIC_KEY, true, { algorithm: 'RS256' }).first
+        access_token = JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
 
         content_type :json
         # OR Content-Type: application/jwt
