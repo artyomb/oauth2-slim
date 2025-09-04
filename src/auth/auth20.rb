@@ -120,6 +120,7 @@ module Auth20
         response = {
           # sub: "admin",
           # id: 'admin',
+          admin: 'admin', # for fixed used
           login: access_token['login'],  # for grafana?
           role: 'admin',  # for grafana?
           # username: 'admin',  # for grafana?
