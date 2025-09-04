@@ -17,6 +17,7 @@ gem 'rack-sassc'
 
 gem 'jwt'
 gem 'ed25519'
+gem 'jwt-eddsa'
 
 gem 'faraday'
 
