@@ -56,7 +56,7 @@ html
       -if auth_bot
         - scope = scope
         a.bot_link target="_blank" href=%[https://t.me/#{auth_bot}?start=#{Base64.strict_encode64 scope}] Slim Auth
-      form method="get" action="/authorize"
+      form method="get" action=""
         input type="hidden" name="redirect_uri" value=redirect_uri
         input type="hidden" name="state" value=state
         input type="hidden" name="redirect" value=locals[:redirect]
