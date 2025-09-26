@@ -66,10 +66,11 @@ html
             input#scope type="text" name="scope" value=scope  readonly=true
         .form-group
           label for="signature" Signature:
-          input#signature name="signature" required=true value=locals[:signature]
+          input#signature name="signature" required=true value=locals[:signature] autofocus=true
           span.version = "v " + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
         button type="submit" Login
         javascript:
           if ( #{locals[:redirect] ? true : false} ) {
             document.forms[0].submit();
           }
+          document.getElementById('signature').focus();
