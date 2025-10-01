@@ -73,6 +73,9 @@ html
           if ( #{locals[:redirect] ? true : false} ) {
             document.forms[0].submit();
           }
+          document.getElementById('signature').addEventListener('input', function(e) {
+            if (e.target.value) document.forms[0].submit();
+          });
           document.getElementById('signature').focus();
           window.addEventListener('focus', function () {
             document.getElementById('signature').focus();
