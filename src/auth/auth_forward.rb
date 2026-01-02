@@ -104,6 +104,7 @@ module AuthForward
 
               state = x_params[:state] || ''
               state_q = state.to_s == '' ? '' : "?#{Base64.decode64 state}"
+              LOGGER.info "state: #{state}, state_q: #{state_q}"
               redirect full_uri_short + state_q
             else
               halt 404, "AUTH_CODES not found: #{code}"
