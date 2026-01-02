@@ -1,0 +1,678 @@
+doctype html
+html
+  head
+    meta charset='utf-8'
+    meta name='viewport' content='width=device-width, initial-scale=1'
+    title = t('app.title')
+    link rel='preconnect' href='https://fonts.googleapis.com'
+    link rel='preconnect' href='https://fonts.gstatic.com' crossorigin=true
+    link href='https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap' rel='stylesheet'
+    
+    sass:
+      /* CSS Variables - Design System */
+      \:root
+        /* Colors */
+        --color-primary: #1a73e8
+        --color-text: #202124
+        --color-text-muted: #5f6368
+        --color-background: #f8f9fa
+        --color-background-card: #fff
+        --color-border: #dadce0
+        --color-border-light: #f1f3f4
+        --color-border-dark: #d4d4d4
+        --color-danger: #ea4335
+        --color-success: #34a853
+        --color-warning: #fbbc04
+        --color-hover: #f1f3f4
+        --color-hover-light: #f8f9fa
+        --color-primary-light: #e8f0fe
+
+        /* Typography - em units (base: 14px = 1em) */
+        --font-family: 'Roboto', system-ui, -apple-system, sans-serif
+        --font-size-xs: 0.857em
+        --font-size-sm: 0.929em
+        --font-size-base: 1em
+        --font-size-lg: 1.143em
+        --font-size-xl: 1.286em
+        --font-size-2xl: 1.571em
+        --font-size-3xl: 2em
+        --font-weight-light: 300
+        --font-weight-normal: 400
+        --font-weight-medium: 500
+        --font-weight-bold: 700
+        --line-height-base: 1.5
+        --letter-spacing-wide: 0.021em
+
+        /* Spacing - em units */
+        --space-xs: 0.286em
+        --space-sm: 0.571em
+        --space-md: 0.957em
+        --space-lg: 1.143em
+        --space-xl: 1.714em
+        --space-2xl: 1.886em
+        --space-3xl: 3.429em
+
+        /* Layout - em units */
+        --topbar-height: 4.571em
+        --sidebar-width: 18.286em
+        --border-radius-sm: 0.286em
+        --border-radius-md: 0.571em
+        --border-width: 1px
+
+        /* Transitions */
+        --transition-fast: 0.1s ease
+        --transition-normal: 0.2s ease
+
+        /* Shadows */
+        --shadow-sm: 0 0.071em 0.143em 0 rgba(60,64,67,0.3), 0 0.071em 0.214em 0.071em rgba(60,64,67,0.15)
+
+      /* Reset & Base */
+      *, *::before, *::after
+        box-sizing: border-box
+        margin: 0
+        padding: 0
+
+      .debug
+        *, *::before, *::after
+          text-box: trim-both cap alphabetic !important
+        // text-box-trim:trim-start | trim-end | trim-both | none
+        // text-box-edge:cap | ex | text | leading+alphabetic | text
+        // Firefox not supported
+
+        h1, h2, h3, h4, h5, p, th, td, a, button, input, select, textarea
+          border-top: 1px solid #d8d8d8
+          border-bottom: 1px solid #d8d8d8
+
+      html, body
+        height: 100%
+        font-family: var(--font-family)
+        font-size: 14px
+        line-height: var(--line-height-base)
+        color: var(--color-text)
+        background: var(--color-background)
+        -webkit-font-smoothing: antialiased
+        -moz-osx-font-smoothing: grayscale
+      
+      /* Layout */
+      .app-container
+        display: flex
+        height: 100vh
+        flex-direction: column
+      
+      .topbar
+        position: sticky
+        top: 0
+        z-index: 100
+        display: flex
+        align-items: center
+        height: var(--topbar-height)
+        padding: 0 var(--space-xl)
+        background: var(--color-background-card)
+        border-bottom: var(--border-width) solid var(--color-border)
+        gap: var(--space-lg)
+      
+      .topbar-left
+        display: flex
+        align-items: center
+        gap: var(--space-lg)
+      
+      .menu-toggle
+        width: 2.857em
+        height: 2.857em
+        display: flex
+        align-items: center
+        justify-content: center
+        border: none
+        background: transparent
+        border-radius: 50%
+        cursor: pointer
+        color: var(--color-text-muted)
+        font-size: 1.429em
+      
+      .menu-toggle:hover
+        background: var(--color-hover)
+      
+      .brand
+        font-size: var(--font-size-2xl)
+        font-weight: var(--font-weight-normal)
+        color: var(--color-text-muted)
+        letter-spacing: 0
+      
+      .brand a
+        color: inherit
+        text-decoration: none
+      
+      .topbar-right
+        margin-left: auto
+        display: flex
+        align-items: center
+        gap: var(--space-md)
+      
+      .locale-switch
+        display: flex
+        align-items: center
+        gap: var(--space-sm)
+        font-size: var(--font-size-xs)
+        font-weight: var(--font-weight-medium)
+      
+      .locale-link
+        color: var(--color-text-muted)
+        text-decoration: none
+        text-transform: uppercase
+        transition: color var(--transition-fast)
+        position: relative
+        &:not(:last-child)
+         border-right: 1px solid var(--color-border-dark)
+      
+      .locale-link:hover
+        color: var(--color-text)
+      
+      .locale-link.active
+        color: var(--color-primary)
+        font-weight: var(--font-weight-medium)
+        
+      .locale-link.active::after
+        content: ''
+        position: absolute
+        bottom: -0.143em
+        left: 50%
+        transform: translateX(-50%)
+        width: 1.429em
+        height: 0.143em
+        background: var(--color-primary)
+        border-radius: 0.071em
+        
+      .locale-separator
+        width: 1px
+        height: 0.857em
+        background: var(--color-border)
+
+      .user-info
+        display: flex
+        align-items: center
+        gap: var(--space-sm)
+        padding: var(--space-sm) var(--space-md)
+        color: var(--color-text-muted)
+        font-size: var(--font-size-base)
+      
+      .btn-logout
+        padding: var(--space-sm) var(--space-lg)
+        border: var(--border-width) solid var(--color-border)
+        border-radius: var(--border-radius-sm)
+        background: var(--color-background-card)
+        color: var(--color-primary)
+        font-weight: var(--font-weight-medium)
+        font-size: var(--font-size-base)
+        cursor: pointer
+        text-decoration: none
+        display: inline-flex
+        align-items: center
+      
+      .btn-logout:hover
+        background: var(--color-hover-light)
+      
+      .main-container
+        display: flex
+        flex: 1
+        overflow: hidden
+      
+      .sidebar
+        width: var(--sidebar-width)
+        background: var(--color-background-card)
+        border-right: var(--border-width) solid var(--color-border)
+        overflow-y: auto
+        transition: margin-left var(--transition-normal)
+      
+      .sidebar.collapsed
+        margin-left: calc(-1 * var(--sidebar-width))
+      
+      .sidebar-nav
+        padding: var(--space-sm) 0
+      
+      .nav-item
+        display: flex
+        align-items: center
+        padding: 0.714em var(--space-xl)
+        color: var(--color-text-muted)
+        text-decoration: none
+        font-size: var(--font-size-base)
+        font-weight: var(--font-weight-medium)
+        transition: background var(--transition-fast)
+      
+      .nav-item:hover
+        background: var(--color-hover)
+      
+      .nav-item.active
+        background: var(--color-primary-light)
+        color: var(--color-primary)
+        border-right: 0.214em solid var(--color-primary)
+      
+      .content
+        flex: 1
+        overflow-y: auto
+        padding: var(--space-xl)
+        width: 100%
+      
+      /* Typography */
+      h1
+        font-size: var(--font-size-3xl)
+        font-weight: var(--font-weight-normal)
+        color: var(--color-text)
+        line-height: 1em
+        margin-top: 0.4em
+        margin-bottom: 0.2em
+
+      h2
+        font-size: var(--font-size-2xl)
+        font-weight: var(--font-weight-normal)
+        color: var(--color-text)
+        line-height: 1em
+        margin-top: 0.4em
+        margin-bottom: 0.2em
+      h3
+        font-size: var(--font-size-xl)
+        font-weight: var(--font-weight-medium)
+        color: var(--color-text)
+        line-height: 1em
+        margin-top: 0.4em
+        margin-bottom: 0.2em
+      .page-header
+        margin-bottom: var(--space-2xl)
+        display: flex
+        align-items: flex-start
+        justify-content: space-between
+        gap: var(--space-xl)
+        
+      .page-header-content p
+        //margin-bottom: 0
+      
+      .dashboard-grid
+        display: grid
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)
+        gap: var(--space-xl)
+        align-items: start
+
+      .qr-card
+        background: var(--color-background-card)
+        border: var(--border-width) solid var(--color-border)
+        border-radius: var(--border-radius-md)
+        padding: var(--space-xl)
+        text-align: center
+
+      .qr-card h2
+        margin-bottom: var(--space-sm)
+        font-size: var(--font-size-xl)
+        font-weight: var(--font-weight-medium)
+
+      .qr-card .qr-image
+        width: 14.286em
+        height: 14.286em
+        margin: var(--space-lg) auto
+        display: block
+
+      .qr-card .qr-link
+        margin-top: var(--space-lg)
+      
+      @media (max-width: 1024px)
+        .dashboard-grid
+          grid-template-columns: 1fr
+
+      .breadcrumb
+        display: flex
+        align-items: center
+        gap: var(--space-xs)
+        font-size: var(--font-size-base)
+        color: var(--color-text-muted)
+        margin-bottom: var(--space-sm)
+      
+      .breadcrumb a
+        color: var(--color-primary)
+        text-decoration: none
+
+      .breadcrumb a:hover
+        text-decoration: underline
+
+      .breadcrumb-separator
+        color: #848990
+        font-size: var(--font-size-xs)
+        margin: 0 var(--space-xs)
+      
+      /* Buttons */
+      .btn
+        display: inline-flex
+        align-items: center
+        gap: var(--space-sm)
+        padding: var(--space-sm) var(--space-lg)
+        border: none
+        border-radius: var(--border-radius-sm)
+        font-size: var(--font-size-base)
+        font-weight: var(--font-weight-medium)
+        cursor: pointer
+        text-decoration: none
+        transition: background var(--transition-fast), box-shadow var(--transition-fast)
+        line-height: 1.25
+        min-height: 2.571em
+        box-sizing: border-box
+      
+      .btn-primary
+        background: var(--color-primary)
+        color: var(--color-background-card)
+      
+      .btn-primary:hover
+        background: #1557b0
+        box-shadow: var(--shadow-sm)
+      
+      .btn-secondary
+        background: var(--color-background-card)
+        color: var(--color-primary)
+        border: var(--border-width) solid var(--color-border)
+      
+      .btn-secondary:hover
+        background: var(--color-hover-light)
+      
+      .btn-danger
+        background: var(--color-danger)
+        color: var(--color-background-card)
+      
+      .btn-danger:hover
+        background: #d33b2c
+      
+      .btn-small
+        padding: 0.429em var(--space-md)
+        font-size: var(--font-size-sm)
+        min-height: 2.286em
+        line-height: 1.25
+      
+      /* Tables */
+      .table-container
+        background: var(--color-background-card)
+        border: var(--border-width) solid var(--color-border)
+        border-radius: var(--border-radius-md)
+        box-shadow: 0 0.071em 0.143em 0 rgba(60,64,67,0.1), 0 0.071em 0.214em 0.071em rgba(60,64,67,0.05)
+      
+      table
+        width: 100%
+        border-collapse: collapse
+      
+      thead
+        background: var(--color-background)
+      
+      th
+        padding: var(--space-md)
+        text-align: left
+        font-weight: var(--font-weight-medium)
+        font-size: var(--font-size-sm)
+        color: var(--color-text-muted)
+        text-transform: uppercase
+        letter-spacing: var(--letter-spacing-wide)
+        border-bottom: var(--border-width) solid var(--color-border-dark)
+        white-space: nowrap
+      
+      td
+        padding: var(--space-md)
+        border-bottom: var(--border-width) solid var(--color-border-light)
+        color: var(--color-text)
+        vertical-align: middle
+      
+      tr:last-child td
+        border-bottom: none
+      
+      tr:hover
+        background: var(--color-background)
+      
+      .table-actions
+        position: relative
+        display: flex
+        align-items: center
+        justify-content: center
+        
+      .table-actions td
+        width: 3.429em
+        text-align: center
+        
+      .action-menu-toggle
+        width: 0.8em
+        height: 0.8em
+        display: flex
+        align-items: center
+        justify-content: center
+        border: none
+        background: transparent
+        border-radius: 50%
+        cursor: pointer
+        color: var(--color-text-muted)
+        font-size: var(--font-size-2xl)
+        transition: background var(--transition-fast)
+        
+      .action-menu-toggle:hover
+        background: var(--color-hover)
+        
+      .action-menu
+        position: absolute
+        top: 100%
+        right: 0
+        background: var(--color-background-card)
+        border: var(--border-width) solid var(--color-border)
+        border-radius: var(--border-radius-sm)
+        box-shadow: 0 0.286em 0.857em 0 rgba(60,64,67,0.15)
+        min-width: 8.571em
+        z-index: 9999
+        opacity: 0
+        visibility: hidden
+        transform: translateY(-0.571em)
+        transition: opacity var(--transition-fast), visibility var(--transition-fast), transform var(--transition-fast)
+        
+      .action-menu.show
+        opacity: 1
+        visibility: visible
+        transform: translateY(0)
+        
+      .action-menu-item
+        display: block
+        width: 100%
+        padding: var(--space-sm) var(--space-lg)
+        border: none
+        background: none
+        color: var(--color-text)
+        font-size: var(--font-size-base)
+        font-weight: var(--font-weight-normal)
+        text-decoration: none
+        text-align: left
+        cursor: pointer
+        transition: background var(--transition-fast)
+        
+      .action-menu-item:hover
+        background: var(--color-hover)
+        
+      .action-menu-item.danger
+        color: var(--color-danger)
+        
+      .action-menu-item.danger:hover
+        background: rgba(234, 67, 53, 0.1)
+      
+      /* Forms */
+      .form-container
+        background: var(--color-background-card)
+        border: var(--border-width) solid var(--color-border)
+        border-radius: var(--border-radius-md)
+        padding: var(--space-xl)
+      
+      .form-grid
+        display: grid
+        grid-template-columns: repeat(2, 1fr)
+        gap: var(--space-xl)
+      
+      .form-grid.single-col
+        grid-template-columns: 1fr
+      
+      .form-group
+        display: flex
+        flex-direction: column
+        gap: var(--space-sm)
+      
+      .form-group.full-width
+        grid-column: 1 / -1
+      
+      label
+        font-size: var(--font-size-sm)
+        font-weight: var(--font-weight-medium)
+        color: var(--color-text-muted)
+      
+      input[type="text"], input[type="email"], textarea
+        padding: var(--space-md)
+        border: var(--border-width) solid var(--color-border)
+        border-radius: var(--border-radius-sm)
+        font-size: var(--font-size-base)
+        font-family: inherit
+        color: var(--color-text)
+        transition: border-color var(--transition-fast)
+      
+      input[type="text"]:focus, input[type="email"]:focus, textarea:focus
+        outline: none
+        border-color: var(--color-primary)
+      
+      textarea
+        resize: vertical
+        min-height: 7.143em
+      
+      .form-help
+        font-size: var(--font-size-xs)
+        color: var(--color-text-muted)
+      
+      .form-actions
+        display: flex
+        gap: var(--space-md)
+        align-items: center
+        justify-content: flex-start
+        margin-top: var(--space-xl)
+        
+      /* Button Groups */
+      .btn-group
+        display: inline-flex
+        border-radius: var(--border-radius-sm)
+        overflow: hidden
+        box-shadow: 0 0.071em 0.143em 0 rgba(60,64,67,0.1)
+        
+      .btn-group .btn
+        border-radius: 0 !important
+        margin: 0
+        position: relative
+        border-left: none
+        border-right: none
+        
+      /* First button (Edit) */
+      .btn-group > a.btn:first-child,
+      .btn-group > .btn:first-child
+        border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm) !important
+        border-left: var(--border-width) solid var(--color-border)
+        
+      /* Last button (Delete inside form) */
+      .btn-group > form:last-child .btn,
+      .btn-group > .btn:last-child
+        border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0 !important
+        border-right: var(--border-width) solid var(--color-border)
+        
+      /* Single button */
+      .btn-group .btn:only-child
+        border-radius: var(--border-radius-sm) !important
+        border-left: var(--border-width) solid var(--color-border)
+        border-right: var(--border-width) solid var(--color-border)
+        
+      /* Color-specific borders */
+      .btn-group > a.btn-primary:first-child
+        border-left: var(--border-width) solid var(--color-primary)
+        
+      .btn-group > form:last-child .btn-danger
+        border-right: var(--border-width) solid var(--color-danger)
+        
+      .btn-group form
+        display: contents
+        margin: 0
+        padding: 0
+      
+      /* Empty State */
+      .empty-state
+        text-align: center
+        padding: var(--space-3xl) var(--space-xl)
+        color: var(--color-text-muted)
+      
+      /* Utilities */
+      .text-muted
+        color: var(--color-text-muted)
+      
+      .text-small
+        font-size: var(--font-size-sm)
+        line-height: 1.4
+      
+      .text-mono
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace
+        font-size: var(--font-size-sm)
+        background: rgba(60,64,67,0.05)
+        padding: 0.143em 0.429em
+        border-radius: 0.214em
+      
+      .mb-0
+        margin-bottom: 0
+      
+      .mb-1
+        margin-bottom: var(--space-sm)
+      
+      .mb-2
+        margin-bottom: var(--space-lg)
+      
+      .mb-3
+        margin-bottom: var(--space-xl)
+
+  body
+    .app-container
+      == yield if block_given?
+
+    javascript:
+      document.addEventListener('DOMContentLoaded', function() {
+        // add "debug" class to html element if url has #debug anchor
+        if (window.location.hash === '#debug') {
+          document.documentElement.classList.add('debug');
+        }
+
+        const menuToggle = document.querySelector('.menu-toggle');
+        const sidebar = document.querySelector('.sidebar');
+        
+        if (menuToggle && sidebar) {
+          menuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            const collapsed = sidebar.classList.contains('collapsed');
+
+            fetch('/sidebar_state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({ collapsed })
+            }).catch(() => {});
+          });
+        }
+      });
+
+      // Action menu toggle function
+      function toggleActionMenu(button) {
+        const menu = button.nextElementSibling;
+        const isOpen = menu.classList.contains('show');
+        
+        // Close all other open menus
+        document.querySelectorAll('.action-menu.show').forEach(openMenu => {
+          openMenu.classList.remove('show');
+        });
+        
+        // Toggle current menu
+        if (!isOpen) {
+          menu.classList.add('show');
+        }
+      }
+
+      // Close menus when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.table-actions')) {
+          document.querySelectorAll('.action-menu.show').forEach(menu => {
+            menu.classList.remove('show');
+          });
+        }
+      });

@@ -1,0 +1,6 @@
+en:
+  auth:
+    login_title: "System Login"
+    login_subtitle: "Sign in with your Telegram account"
+    login_button: "Login with Telegram"
+    logout: "Logout"

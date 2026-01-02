@@ -1,0 +1,126 @@
+== slim :'layout'
+
+sass:
+  .login-container
+    display: flex
+    align-items: center
+    justify-content: center
+    min-height: 100vh
+    background: var(--color-background)
+  
+  .login-card
+    background: var(--color-background-card)
+    border: var(--border-width) solid var(--color-border)
+    border-radius: var(--border-radius-md)
+    padding: var(--space-3xl)
+    max-width: 400px
+    width: 100%
+    text-align: center
+    box-shadow: var(--shadow-sm)
+  
+  .login-card h1
+    font-size: var(--font-size-2xl)
+    font-weight: var(--font-weight-normal)
+    margin-bottom: var(--space-sm)
+    color: var(--color-text)
+  
+  .login-card p
+    color: var(--color-text-muted)
+    margin-bottom: var(--space-2xl)
+  
+  .locale-switch
+    display: flex
+    align-items: center
+    justify-content: center
+    gap: 0
+    font-size: var(--font-size-xs)
+    font-weight: var(--font-weight-medium)
+    margin-bottom: 24px
+  
+  .locale-link
+    padding: var(--space-xs) var(--space-sm)
+    color: var(--color-text-muted)
+    text-decoration: none
+    text-transform: uppercase
+    transition: color var(--transition-fast)
+    position: relative
+  
+  .locale-link:hover
+    color: var(--color-text)
+  
+  .locale-link.active
+    color: var(--color-primary)
+    font-weight: var(--font-weight-medium)
+    
+  .locale-link.active::after
+    content: ''
+    position: absolute
+    bottom: 1px
+    left: 50%
+    transform: translateX(-50%)
+    width: 20px
+    height: 2px
+    background: var(--color-primary)
+    border-radius: 1px
+    
+  .locale-separator
+    width: 1px
+    height: 12px
+    background: var(--color-border)
+    margin: 0 var(--space-xs)
+  
+  .telegram-btn
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    gap: var(--space-md)
+    width: 100%
+    padding: var(--space-md) var(--space-xl)
+    background: var(--color-primary)
+    color: var(--color-background-card)
+    border: none
+    border-radius: var(--border-radius-sm)
+    font-size: var(--font-size-base)
+    font-weight: var(--font-weight-medium)
+    text-decoration: none
+    cursor: pointer
+    transition: background var(--transition-fast)
+    min-height: 44px
+  
+  .telegram-btn:hover
+    background: #1557b0
+    box-shadow: var(--shadow-sm)
+  
+  .telegram-icon
+    width: 24px
+    height: 24px
+
+.login-container
+  .login-card
+    .locale-switch
+      - I18n.available_locales.each do |locale|
+        a.locale-link class=(locale == I18n.locale ? 'active' : '') href="/locale/#{locale}" = locale.to_s.upcase
+
+    h1 = t('auth.login_title')
+    / p = t('auth.login_subtitle')
+    
+    a.telegram-btn href="https://t.me/#{ENV.fetch('TELEGRAM_AUTH_BOT', 'undefined_bot')}?start=weblogin_#{locals[:auth_code]}" target='_blank'
+      svg.telegram-icon viewBox="0 0 24 24" fill="currentColor"
+        path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"1.887 5.192-2.249 2.473-1.032 2.987-1.211 3.323-1.217.074-.001.24.017.347.103.09.072.115.169.127.237.012.068.027.224.015.346z"
+      span = t('auth.login_button')
+
+javascript:
+  let polling = false;
+  
+  function checkAuth() {
+    fetch('/auth_confirm')
+      .then(r => r.ok ? location.reload() : null)
+      .catch(() => {});
+  }
+  
+  document.querySelector('.telegram-btn').addEventListener('click', function() {
+    if (!polling) {
+      polling = true;
+      setInterval(checkAuth, 2000);
+    }
+  });

@@ -1,0 +1,7 @@
+ru:
+  auth:
+    login_title: "Вход в систему"
+    login_subtitle: "Войдите через Telegram"
+    login_button: "Войти через Telegram"
+    logout: "Выход"
+  

@@ -5,179 +5,115 @@ require 'json'
 require 'digest'
 require 'ed25519'
 require 'faraday'
+require_relative 'token'
 
 $stdout.sync=true
 FORWARD_AUTH = {}
-
-KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
-system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
-
-if File.exist?(KEY_FILENAME)
-  signature_key_hex = IO.read(KEY_FILENAME)
-  SIGNING_KEY = Ed25519::SigningKey.new([signature_key_hex].pack('H*'))
-else
-  SIGNING_KEY = Ed25519::SigningKey.generate
-  signature_key_hex = SIGNING_KEY.to_bytes.unpack1('H*')
-  IO.write(KEY_FILENAME, signature_key_hex)
+AUTH_CODES = {}
+def clear_codes
+  AUTH_CODES.delete_if { |k, v| v[:time] < Time.now.to_i - 30 }
 end
 
-FORWARD_OAUTH_AUTH_URL = ENV['FORWARD_OAUTH_AUTH_URL']
-AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
-AUTH_SCOPE = ENV['AUTH_SCOPE']
-AUTH_BOT = ENV['AUTH_BOT']
-AUTH_CODES = {}
-
+# CUSTOM override forward auth method:
+#
+# config target: '/app/custom/forward_auth.rb', file_content: <<~RUBY
+#   forward_auth do
+#     me = Faraday.new { |f| f.response :raise_error }.get('#{FORWARD_AUTH_SERVER}') do |r|
+#       r.headers['Cookie'] = request.cookies.map { |k, v| "\#{k}=\#{v}" }.join('; ')
+#     end
+#
+#    generate_token user_id: me[:id]
+#   end
+# RUBY
 def forward_auth(&block)
   FORWARD_AUTH[:method] = lambda do
     instance_exec &block
   rescue => e
-    $stdout.puts e.message
+    LOGGER.error 'Error in forward_auth: ', e
     halt 401, 'Unauthorized'
   end
 end
 
-module AuthForward
-  FORWARD_AUTH[:method] = -> do
-    path = request.env['HTTP_X_FORWARDED_URI']
-    query = path[/\?(.*)/, 1].to_s.split('&state=', 2)
-    parsed_params = Rack::Utils.parse_nested_query(query[0].to_s).merge({'state' => query[1]})
-
-    code = parsed_params['code']
-    if code
-      LOGGER.info "FORWARD_AUTH code: #{code}"
-      LOGGER.info "AUTH_CODES: #{AUTH_CODES}"
-      if AUTH_CODES.key? code
-        attributes = AUTH_CODES[code].slice(:scope, :login)
-        generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
-
-        AUTH_CODES.delete code
-        redirect parsed_params['state']
-      else
-        LOGGER.info "AUTH_CODES not found: #{code}"
-        halt 404, "AUTH_CODES not found: #{code}"
-      end
-    else
-      LOGGER.info "FORWARD_AUTH NO code - redirect to auth"
-      proto, host, path = %w[PROTO HOST URI].map { request.env["HTTP_X_FORWARDED_#{it}"] }
-      full_uri = "#{proto}://#{host}#{path}"
-      full_uri_short = full_uri.split('?')[0]
-      redirect "#{FORWARD_OAUTH_AUTH_URL}?redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email&state=#{URI.encode_www_form_component(full_uri)}", 302
-    end
+def revoked?(&block)
+  FORWARD_AUTH[:revoked?] = lambda do
+    instance_exec &block
+  rescue => e
+    LOGGER.error 'Error in is_revoked?: ', e
+    raise
   end
+end
 
+module AuthForward
   require_relative '../custom/forward_auth.rb' if File.exist?("#{__dir__}/../custom/forward_auth.rb")
 
   def self.included(base)
     base.class_eval do
-      helpers do
-        def generate_token(external = {})
-          data = {
-            iss: FORWARD_OAUTH_AUTH_URL.to_s,
-            # sub: 'fake',
-            login: 'false',
-            role: 'fake',
-            **external.transform_keys(&:to_sym),
-            exp: Time.now.to_i + 12 * 3600,
-            iat: Time.now.to_i
-          }
-          # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
-          access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
-          response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
-          access_token
-        end
+      helpers Token
+
+      if ENV['AUTH_VERIFY_KEY'] && FORWARD_AUTH[:method].nil?
+        require_relative 'signature_auth'
+        helpers SignatureAuth
+      end
+
+      if ENV['TELEGRAM_AUTH_BOT'] && FORWARD_AUTH[:method].nil?
+        require_relative 'telegram_auth'
+        helpers TelegramAuth
+      end
+
+      FORWARD_AUTH[:revoked?] ||= -> { false }
+      FORWARD_AUTH[:method] ||= -> do
+        proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.env['rack.url_scheme']
+        host = request.env['HTTP_X_FORWARDED_HOST'] || request.env['HTTP_HOST']
+        path = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI']
+        full_uri = "#{proto}://#{host}#{path}"
+        full_uri_short, to_params = full_uri.split('?')
+
+        state = to_params.to_s == '' ? '' : "&state=#{Base64.encode64(to_params).strip}"
+        LOGGER.info 'FORWARD_AUTH NO code - redirect to auth'
+        redirect "#{FORWARD_OAUTH_AUTH_URL}?redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email#{state}", 302
       end
 
       get '/auth' do
-        token = request.cookies['auth_token']
-        if valid_token? token
-          LOGGER.info "AUTH TOKEN VALID"
+        if valid_token? && !FORWARD_AUTH[:revoked?].call
+          LOGGER.info 'AUTH TOKEN VALID'
           status 200
-          'OK'
         else
-          LOGGER.error "AUTH TOKEN INVALID"
+          LOGGER.error 'AUTH TOKEN INVALID'
+
+          code = params['code']
+          if code
+            LOGGER.info "FORWARD_AUTH code: #{code}"
+            clear_codes
+            if AUTH_CODES.key? code
+              attributes = AUTH_CODES[code].slice(:scope, :login)
+              generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
+
+              AUTH_CODES.delete code
+              proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.env['rack.url_scheme']
+              host = request.env['HTTP_X_FORWARDED_HOST'] || request.env['HTTP_HOST']
+              path = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI']
+              full_uri = "#{proto}://#{host}#{path}"
+              full_uri_short = full_uri.split('?').first
+
+              state = params[:state] || ''
+              state_q = state.to_s == '' ? '' : "?#{Base64.decode64 state}"
+              redirect full_uri_short + state_q
+            else
+              halt 404, "AUTH_CODES not found: #{code}"
+            end
+          end
+
           instance_exec &FORWARD_AUTH[:method]
         end
       end
 
-      get %r{.*/authorize} do
-        token = request.cookies['auth_token']
+      get %r{.*/logout} do
+        clear_token
 
-        redirect_uri = params[:redirect_uri]
-        r_uri = URI.parse redirect_uri
-        # "#{r_uri.scheme}://#{r_uri.user}:#{r_uri.password}@#{r_uri.host}:#{r_uri.port}"
-
-        state = params[:state]
-
-        scope = AUTH_SCOPE || r_uri.host || request.env['HTTP_HOST']
-
-        signature = params[:signature]
-
-        if valid_token? token
-          decoded = JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
-          LOGGER.info 'AUTHORIZE BY TOKEN'
-          authorization_code = SecureRandom.hex(16)
-          AUTH_CODES[authorization_code] = { scope:, time: Time.now.to_i, login: decoded['login']}
-          LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
-          LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}&state=#{state}"
-
-          redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
-        end
-
-        if scope && signature
-          verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
-          signature_str = Zlib::Inflate.inflate Base64.decode64(signature)
-          scope2, time, login, sig = signature_str.split '|'
-          message = "#{scope}|#{time}|#{login}"
-
-          sig = [sig].pack('H*')
-          t1 = scope2 == scope
-          t2 = Time.now.to_i - time.to_i < 30
-          t3 = verify_key.verify(sig, message) rescue false
-
-          if t1 && t2 && t3
-            LOGGER.info "Slim auth LOGIN Successful: #{message}"
-            authorization_code = SecureRandom.hex(16)
-            AUTH_CODES[authorization_code] = { scope:, time:, login: }
-            LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
-            LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}&state=#{state}"
-
-            if params[:redirect] == 'do'
-              redirect "#{redirect_uri}?code=#{authorization_code}&state=#{state}"
-            else
-              # SSO Session cookie WJT
-              generate_token scope:, login:, sso: true
-              slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: 'do' }
-            end
-          else
-            LOGGER.info "Slim auth LOGIN failed: #{message}"
-            slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }
-          end
-        else
-          slim :authorize, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil }
-        end
-      end
-
-      get '/logout' do
-        response.set_cookie('auth_token', value: '', path: '/', expires: Time.now - 3600, httponly: true)
         proto = request.env['HTTP_X_FORWARDED_PROTO']
         host = request.env['HTTP_X_FORWARDED_HOST']
         uri = "#{proto}://#{host}"
         redirect uri
-      end
-
-      private
-
-      def valid_token?(token)
-        return false if !token || token.empty?
-
-        decoded = JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
-
-        # return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
-        return false unless decoded['exp'].to_i > Time.now.to_i
-        headers['X-Token'] = decoded
-        true
-      rescue StandardError => _e
-        false
       end
 
     end
