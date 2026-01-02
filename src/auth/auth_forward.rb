@@ -5,6 +5,7 @@ require 'json'
 require 'digest'
 require 'ed25519'
 require 'faraday'
+require 'rack/utils'
 require_relative 'token'
 
 $stdout.sync=true
@@ -75,7 +76,9 @@ module AuthForward
 
       get '/auth' do
         # force ?code= detect even token is valid ...
-        x_params = request.env['HTTP_X_FORWARDED_URI'].split('?').last.scan(/(.*)=(.*)/).to_h
+        raw_uri = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI'] || ''
+        query = raw_uri.split('?', 2)[1].to_s
+        x_params = Rack::Utils.parse_nested_query(query)
         LOGGER.debug :x_params, x_params
 
         if valid_token? && !FORWARD_AUTH[:revoked?].call && !x_params['code']
