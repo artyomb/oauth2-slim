@@ -1,3 +1,15 @@
+KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
+system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
+
+if File.exist?(KEY_FILENAME)
+  signature_key_hex = IO.read(KEY_FILENAME)
+  SIGNING_KEY = Ed25519::SigningKey.new([signature_key_hex].pack('H*'))
+else
+  SIGNING_KEY = Ed25519::SigningKey.generate
+  signature_key_hex = SIGNING_KEY.to_bytes.unpack1('H*')
+  IO.write(KEY_FILENAME, signature_key_hex)
+end
+
 module Token
 
   def get_token = request.cookies['auth_token']
@@ -7,8 +19,11 @@ module Token
   end
 
   def generate_token(external = {})
+    # Is defined only if signature_auth is used
+    # Todo: fix for telegram_auth
+    iss = defined?(FORWARD_OAUTH_AUTH_URL) ? FORWARD_OAUTH_AUTH_URL.to_s : ''
     data = {
-      iss: FORWARD_OAUTH_AUTH_URL.to_s,
+      iss: iss,
       # sub: 'fake',
       login: 'false',
       role: 'fake',
@@ -22,10 +37,14 @@ module Token
     access_token
   end
 
+  def decode_token(token)
+    JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
+  end
+
   def valid_token?(token = get_token)
     return false if !token || token.empty?
 
-    decoded = JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
+    decoded = decode_token(token)
 
     # return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
     return false unless decoded['exp'].to_i > Time.now.to_i

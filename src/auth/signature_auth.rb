@@ -1,15 +1,3 @@
-KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
-system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
-
-if File.exist?(KEY_FILENAME)
-  signature_key_hex = IO.read(KEY_FILENAME)
-  SIGNING_KEY = Ed25519::SigningKey.new([signature_key_hex].pack('H*'))
-else
-  SIGNING_KEY = Ed25519::SigningKey.generate
-  signature_key_hex = SIGNING_KEY.to_bytes.unpack1('H*')
-  IO.write(KEY_FILENAME, signature_key_hex)
-end
-
 AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
 AUTH_SCOPE = ENV['AUTH_SCOPE']
 AUTH_BOT = ENV['AUTH_BOT']
@@ -33,7 +21,7 @@ module SignatureAuth
       signature = params[:signature]
 
       if valid_token? token
-        decoded = JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
+        decoded = decode_token token
         LOGGER.info 'AUTHORIZE BY TOKEN'
         authorization_code = SecureRandom.hex(16)
         clear_codes

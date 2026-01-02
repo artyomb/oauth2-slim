@@ -85,7 +85,7 @@ module AuthForward
           LOGGER.info 'AUTH TOKEN VALID'
           status 200
         else
-          LOGGER.error 'AUTH TOKEN INVALID'
+          LOGGER.error 'AUTH TOKEN INVALID' unless valid_token?
 
           code = x_params['code']
           if code
