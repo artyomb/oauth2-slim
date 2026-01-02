@@ -74,7 +74,8 @@ module AuthForward
       end
 
       get '/auth' do
-        if valid_token? && !FORWARD_AUTH[:revoked?].call
+        # force ?code= detect even token is valid ...
+        if valid_token? && !FORWARD_AUTH[:revoked?].call && !params['code']
           LOGGER.info 'AUTH TOKEN VALID'
           status 200
         else
