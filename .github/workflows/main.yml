@@ -15,7 +15,5 @@ jobs:
         env:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
       - uses: docker/bake-action@v5
-        env:
-          REGISTRY_HOST: 'dtorry'
-          CI_COMMIT_BRANCH: ${{ github.ref_name }}
+        env: { REGISTRY_HOST: 'dtorry' }
         with: { workdir: ./docker, files: bake.yml, push: true }

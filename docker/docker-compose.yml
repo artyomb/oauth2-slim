@@ -1,6 +1,6 @@
 services:
   oauth2_slim:
-    image: ${REGISTRY_HOST}/oauth2-slim/${CI_COMMIT_BRANCH}
+    image: ${REGISTRY_HOST}/oauth2-slim:dev-${GITHUB_REF_NAME}
     build:
       context: ../src
       dockerfile: ../docker/ruby/Dockerfile
