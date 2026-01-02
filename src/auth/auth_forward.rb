@@ -75,13 +75,16 @@ module AuthForward
 
       get '/auth' do
         # force ?code= detect even token is valid ...
-        if valid_token? && !FORWARD_AUTH[:revoked?].call && !params['code']
+        x_params = request.env['HTTP_X_FORWARDED_URI'].split('?').last.scan(/(.*)=(.*)/).to_h
+        LOGGER.debug :x_params, x_params
+
+        if valid_token? && !FORWARD_AUTH[:revoked?].call && !x_params['code']
           LOGGER.info 'AUTH TOKEN VALID'
           status 200
         else
           LOGGER.error 'AUTH TOKEN INVALID'
 
-          code = params['code']
+          code = x_params['code']
           if code
             LOGGER.info "FORWARD_AUTH code: #{code}"
             clear_codes
@@ -96,7 +99,7 @@ module AuthForward
               full_uri = "#{proto}://#{host}#{path}"
               full_uri_short = full_uri.split('?').first
 
-              state = params[:state] || ''
+              state = x_params[:state] || ''
               state_q = state.to_s == '' ? '' : "?#{Base64.decode64 state}"
               redirect full_uri_short + state_q
             else
