@@ -19,6 +19,7 @@ module Token
   end
 
   def generate_token(external = {})
+    LOGGER.debug 'Generating token ...'
     # Is defined only if signature_auth is used
     # Todo: fix for telegram_auth
     iss = defined?(FORWARD_OAUTH_AUTH_URL) ? FORWARD_OAUTH_AUTH_URL.to_s : ''
@@ -34,6 +35,7 @@ module Token
     # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
     access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
     response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
+    LOGGER.debug "New token: #{access_token}"
     access_token
   end
 
@@ -42,15 +44,22 @@ module Token
   end
 
   def valid_token?(token = get_token)
+    LOGGER.debug 'valid_token?'
     return false if !token || token.empty?
 
     decoded = decode_token(token)
 
     # return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
-    return false unless decoded['exp'].to_i > Time.now.to_i
+    unless decoded['exp'].to_i > Time.now.to_i
+      LOGGER.debug "token expired: #{decoded}"
+      return false
+    end
+
     headers['X-Token'] = decoded
+    LOGGER.debug "token valid: #{decoded}"
     true
-  rescue StandardError => _e
+  rescue => e
+    LOGGER.debug "token invalid: #{e.message}"
     false
   end
 end
