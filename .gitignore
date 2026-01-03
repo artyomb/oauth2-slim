@@ -1,3 +1,4 @@
 .env.local
 /dev/
 *.css.map
+forward_auth.rb
