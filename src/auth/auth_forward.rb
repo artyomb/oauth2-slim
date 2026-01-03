@@ -28,9 +28,10 @@ end
 # RUBY
 def forward_auth(&block)
   FORWARD_AUTH[:method] = lambda do
+    LOGGER.debug 'Custom forward_auth method'
     instance_exec &block
   rescue => e
-    LOGGER.error 'Error in forward_auth: ', e
+    LOGGER.error 'Error in Custom forward_auth method: ', e
     halt 401, 'Unauthorized'
   end
 end
