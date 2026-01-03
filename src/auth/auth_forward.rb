@@ -110,6 +110,8 @@ module AuthForward
           end
 
           instance_exec &FORWARD_AUTH[:method]
+          headers['X-AuthSlim'] = 'authorized'
+          LOGGER.info 'Authorization successful'
         end
       end
 

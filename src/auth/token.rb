@@ -35,7 +35,7 @@ module Token
     # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
     access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
     response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
-    LOGGER.debug "New token: #{access_token}"
+    LOGGER.debug "New token: #{data}"
     access_token
   end
 
