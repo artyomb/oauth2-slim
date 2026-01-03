@@ -55,7 +55,7 @@ module Token
       return false
     end
 
-    headers['X-Token'] = decoded
+    headers['X-Token'] = decoded.to_json
     LOGGER.debug "token valid: #{decoded}"
     true
   rescue => e
