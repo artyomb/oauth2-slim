@@ -70,9 +70,15 @@ module AuthForward
         full_uri = "#{proto}://#{host}#{path}"
         full_uri_short, to_params = full_uri.split('?')
 
-        state = to_params.to_s == '' ? '' : "&state=#{Base64.encode64(to_params).strip}"
+        state = to_params.to_s == '' ? '' : "&state=#{Base64.urlsafe_encode64(to_params)}"
         LOGGER.info 'FORWARD_AUTH NO code - redirect to auth'
-        redirect "#{FORWARD_OAUTH_AUTH_URL}?redirect_uri=#{full_uri_short}&response_type=code&scope=openid+profile+email#{state}", 302
+        params = {
+          redirect_uri: full_uri_short,
+          response_type: 'code',
+          scope: 'openid profile email',
+          state: state
+        }
+        redirect "#{FORWARD_OAUTH_AUTH_URL}??#{URI.encode_www_form(params)}", 302
       end
 
       get '/auth' do
@@ -102,7 +108,7 @@ module AuthForward
               full_uri_short = full_uri.split('?').first
 
               state = x_params['state'] || ''
-              state_q = state.to_s == '' ? '' : "?#{Base64.decode64 state}"
+              state_q = state.to_s == '' ? '' : "?#{Base64.urlsafe_decode64 state}"
               LOGGER.info "state: #{state}, state_q: #{state_q}"
               redirect full_uri_short + state_q
             else
