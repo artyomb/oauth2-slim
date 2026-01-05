@@ -78,7 +78,7 @@ module AuthForward
           scope: 'openid profile email',
           state: state
         }
-        redirect "#{FORWARD_OAUTH_AUTH_URL}??#{URI.encode_www_form(params)}", 302
+        redirect "#{FORWARD_OAUTH_AUTH_URL}?#{URI.encode_www_form(params)}", 302
       end
 
       get '/auth' do
