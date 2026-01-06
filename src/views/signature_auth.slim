@@ -55,7 +55,7 @@ html
         p.error = error
       -if auth_bot
         - scope = scope
-        a.bot_link target="_blank" tabindex="-1" href=%[https://t.me/#{auth_bot}?start=#{Base64.strict_encode64 scope}] Slim Auth
+        a.bot_link target="_blank" tabindex="-1" href=%[https://t.me/#{auth_bot}?start=#{Base64.urlsafe_encode64 scope}] Slim Auth
       form method="get" action=""
         input type="hidden" name="redirect_uri" value=redirect_uri
         input type="hidden" name="state" value=state

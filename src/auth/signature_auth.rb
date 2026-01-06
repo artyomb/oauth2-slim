@@ -34,7 +34,7 @@ module SignatureAuth
 
       if scope && signature
         verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
-        signature_str = Zlib::Inflate.inflate Base64.decode64(signature)
+        signature_str = Zlib::Inflate.inflate Base64.urlsafe_decode64(signature) rescue ''
         scope2, time, login, sig = signature_str.split '|'
         message = "#{scope}|#{time}|#{login}"
 
