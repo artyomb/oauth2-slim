@@ -86,7 +86,7 @@ module AuthForward
           next unless key.start_with?('HTTP_') || key == 'CONTENT_TYPE' || key == 'CONTENT_LENGTH'
 
           header_name = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
-          next if %w[Cookies Connection Keep-Alive Proxy-Authenticate Proxy-Authorization Te Trailer Transfer-Encoding Upgrade].include?(header_name)
+          next if %w[Connection Keep-Alive Proxy-Authenticate Proxy-Authorization Te Trailer Transfer-Encoding Upgrade].include?(header_name)
 
           headers[header_name] = value
         end
