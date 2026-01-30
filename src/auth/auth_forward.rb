@@ -81,6 +81,7 @@ module AuthForward
         redirect "#{FORWARD_OAUTH_AUTH_URL}?#{URI.encode_www_form(params)}", 302
       end
 
+      # todo: Maybe narrow which headers get forwarded (e.g., only X-*).
       def forward_incoming_headers
         request.env.each do |key, value|
           next unless key.start_with?('HTTP_') || key == 'CONTENT_TYPE' || key == 'CONTENT_LENGTH'
@@ -101,6 +102,8 @@ module AuthForward
 
         if valid_token? && !FORWARD_AUTH[:revoked?].call && !x_params['code']
           LOGGER.info 'AUTH TOKEN VALID'
+          forward_incoming_headers
+          headers['X-AuthSlim'] = 'authorized'
           status 200
         else
           code = x_params['code']
