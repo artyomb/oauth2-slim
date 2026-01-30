@@ -81,6 +81,17 @@ module AuthForward
         redirect "#{FORWARD_OAUTH_AUTH_URL}?#{URI.encode_www_form(params)}", 302
       end
 
+      def forward_incoming_headers
+        request.env.each do |key, value|
+          next unless key.start_with?('HTTP_') || key == 'CONTENT_TYPE' || key == 'CONTENT_LENGTH'
+
+          header_name = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
+          next if %w[Cookies Connection Keep-Alive Proxy-Authenticate Proxy-Authorization Te Trailer Transfer-Encoding Upgrade].include?(header_name)
+
+          headers[header_name] = value
+        end
+      end
+
       get '/auth' do
         # force ?code= detect even token is valid ...
         raw_uri = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI'] || ''
@@ -117,6 +128,7 @@ module AuthForward
           end
 
           instance_exec &FORWARD_AUTH[:method]
+          forward_incoming_headers
           headers['X-AuthSlim'] = 'authorized'
           LOGGER.info 'Authorization successful'
         end
