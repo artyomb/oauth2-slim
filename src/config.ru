@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 # require_relative 'src/server'
+ENV['TZ'] = 'UTC'
+
 require 'sinatra'
 require 'slim'
 require 'rack/sassc'
