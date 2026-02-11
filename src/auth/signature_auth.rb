@@ -58,7 +58,7 @@ module SignatureAuth
             slim :signature_auth, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: 'do' }, layout: false
           end
         else
-          LOGGER.info "Slim auth LOGIN failed: #{message}"
+          LOGGER.info "Slim auth LOGIN failed: #{message}\n t1: #{t1}, t2: #{t2}, t3:#{t3}\n in_scope: #{scope2}, true_scope: #{scope}\n delta t: #{Time.now.to_i - time.to_i}"
           slim :signature_auth, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }, layout: false
         end
       else
