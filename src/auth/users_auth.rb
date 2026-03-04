@@ -86,7 +86,7 @@ module UsersAuth
         end
 
         def render_users_auth(context, error: nil)
-          slim :users_auth, locals: context.merge(error:), layout: false
+          slim :users_auth, locals: context.merge(error:)#, layout: false
         end
       end
 

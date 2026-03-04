@@ -1,47 +1,131 @@
-doctype html
-html
-  head
-    title Auth
-    meta charset="utf-8"
-    meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no"
-    sass:
-      .container
-        max-width: 400px
-        margin: 50px auto
-        font-family: Arial, sans-serif
+sass:
+  .login-container
+    display: flex
+    align-items: flex-start
+    justify-content: center
+    min-height: auto
+    padding: var(--space-xl) 0
+    background: var(--color-background)
 
-      .error
-        color: red
+  .login-card
+    background: var(--color-background-card)
+    border: var(--border-width) solid var(--color-border)
+    border-radius: var(--border-radius-md)
+    padding: var(--space-3xl)
+    max-width: 400px
+    width: 100%
+    text-align: center
+    box-shadow: var(--shadow-sm)
+    margin: 0 auto
 
+  .login-card h1
+    font-size: var(--font-size-2xl)
+    font-weight: var(--font-weight-normal)
+    margin-bottom: var(--space-sm)
+    color: var(--color-text)
+
+  .login-subtitle
+    color: var(--color-text-muted)
+    margin-bottom: var(--space-xl)
+
+  .locale-switch
+    display: flex
+    align-items: center
+    justify-content: center
+    gap: 0
+    font-size: var(--font-size-xs)
+    font-weight: var(--font-weight-medium)
+    margin-bottom: 24px
+
+  .locale-link
+    padding: var(--space-xs) var(--space-sm)
+    color: var(--color-text-muted)
+    text-decoration: none
+    text-transform: uppercase
+    transition: color var(--transition-fast)
+    position: relative
+
+  .locale-link:hover
+    color: var(--color-text)
+
+  .locale-link.active
+    color: var(--color-primary)
+    font-weight: var(--font-weight-medium)
+
+  .locale-link.active::after
+    content: ''
+    position: absolute
+    bottom: 1px
+    left: 50%
+    transform: translateX(-50%)
+    width: 20px
+    height: 2px
+    background: var(--color-primary)
+    border-radius: 1px
+
+  .form-group
+    margin-bottom: var(--space-md)
+    text-align: left
+
+  .form-group label
+    display: block
+    color: var(--color-text)
+    margin-bottom: var(--space-xs)
+
+  .form-input
+    box-sizing: border-box
+    width: 100%
+    padding: var(--space-sm)
+    border: var(--border-width) solid var(--color-border)
+    border-radius: var(--border-radius-sm)
+    font-size: var(--font-size-base)
+    background: var(--color-background-card)
+    color: var(--color-text)
+
+  .login-btn
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 100%
+    padding: var(--space-md) var(--space-xl)
+    background: var(--color-primary)
+    color: var(--color-background-card)
+    border: none
+    border-radius: var(--border-radius-sm)
+    font-size: var(--font-size-base)
+    font-weight: var(--font-weight-medium)
+    cursor: pointer
+    transition: background var(--transition-fast)
+    min-height: 44px
+
+  .login-btn:hover
+    background: #1557b0
+    box-shadow: var(--shadow-sm)
+
+  .error
+    color: #b42318
+    margin-bottom: var(--space-sm)
+    text-align: left
+
+.login-container
+  .login-card
+    .locale-switch
+      - I18n.available_locales.each do |locale|
+        a.locale-link class=(locale == I18n.locale ? 'active' : '') href="/locale/#{locale}" = locale.to_s.upcase
+
+    h1 = t('auth.login_title')
+    p.login-subtitle = t('auth.password_login_subtitle')
+
+    - if error
+      p.error = t('auth.invalid_credentials')
+
+    form method="post" action=""
+      input type="hidden" name="redirect_uri" value=redirect_uri
+      input type="hidden" name="state" value=state
       .form-group
-        margin-bottom: 15px
-
-      input
-        box-sizing: border-box
-        width: 100%
-        padding: 8px
-        margin-top: 5px
-
-      button
-        padding: 10px
-        background-color: #007bff
-        color: white
-        border: none
-        cursor: pointer
-
-        &:hover
-          background-color: #0056b3
-  body
-    .container
-      - if error
-        p.error = error
-      form method="post" action=""
-        input type="hidden" name="redirect_uri" value=redirect_uri
-        input type="hidden" name="state" value=state
-        .form-group
-          label for="username" Login:
-          input#username type="text" name="username" required=true autofocus=true
-        .form-group
-          label for="password" Password:
-          input#password type="password" name="password" required=true
-        button type="submit" Login
+        label for="username" = t('auth.username_label')
+        input.form-input#username type="text" name="username" required=true autofocus=true autocomplete="username"
+      .form-group
+        label for="password" = t('auth.password_label')
+        input.form-input#password type="password" name="password" required=true autocomplete="current-password"
+      button.login-btn type="submit" = t('auth.password_login_button')

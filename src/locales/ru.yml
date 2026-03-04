@@ -3,5 +3,10 @@ ru:
     login_title: "Вход в систему"
     login_subtitle: "Войдите через Telegram"
     login_button: "Войти через Telegram"
+    password_login_subtitle: "Войдите по логину и паролю"
+    username_label: "Логин"
+    password_label: "Пароль"
+    password_login_button: "Войти"
+    invalid_credentials: "Неверный логин/пароль или пользователь отключен"
     logout: "Выход"
   
