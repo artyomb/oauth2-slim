@@ -1,0 +1,47 @@
+doctype html
+html
+  head
+    title Auth
+    meta charset="utf-8"
+    meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1, user-scalable=no"
+    sass:
+      .container
+        max-width: 400px
+        margin: 50px auto
+        font-family: Arial, sans-serif
+
+      .error
+        color: red
+
+      .form-group
+        margin-bottom: 15px
+
+      input
+        box-sizing: border-box
+        width: 100%
+        padding: 8px
+        margin-top: 5px
+
+      button
+        padding: 10px
+        background-color: #007bff
+        color: white
+        border: none
+        cursor: pointer
+
+        &:hover
+          background-color: #0056b3
+  body
+    .container
+      - if error
+        p.error = error
+      form method="post" action=""
+        input type="hidden" name="redirect_uri" value=redirect_uri
+        input type="hidden" name="state" value=state
+        .form-group
+          label for="username" Login:
+          input#username type="text" name="username" required=true autofocus=true
+        .form-group
+          label for="password" Password:
+          input#password type="password" name="password" required=true
+        button type="submit" Login

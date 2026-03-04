@@ -52,6 +52,11 @@ module AuthForward
     base.class_eval do
       helpers Token
 
+      if ENV['USERS_YAML'].to_s != '' && File.file?(ENV['USERS_YAML']) && FORWARD_AUTH[:method].nil?
+        require_relative 'users_auth'
+        helpers UsersAuth
+      end
+
       if ENV['AUTH_VERIFY_KEY'] && FORWARD_AUTH[:method].nil?
         require_relative 'signature_auth'
         helpers SignatureAuth
@@ -111,8 +116,9 @@ module AuthForward
             LOGGER.info "FORWARD_AUTH code: #{code}"
             clear_codes
             if AUTH_CODES.key? code
-              attributes = AUTH_CODES[code].slice(:scope, :login)
-              generate_token attributes.merge(email: "#{attributes[:login]}@local.net")
+              attributes = AUTH_CODES[code].slice(:scope, :login, :name, :role, :org, :email)
+              attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
+              generate_token attributes
 
               AUTH_CODES.delete code
               proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.env['rack.url_scheme']

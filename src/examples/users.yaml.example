@@ -1,0 +1,7 @@
+users:
+  - login1:
+      Name: Fullname
+      role: admin
+      org: redbull
+      enabled: false
+      password: SeCreT

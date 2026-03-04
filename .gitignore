@@ -2,3 +2,5 @@
 /dev/
 *.css.map
 forward_auth.rb
+AGENTS.md
+**/.knowledge/
