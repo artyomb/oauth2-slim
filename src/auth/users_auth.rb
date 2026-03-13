@@ -68,7 +68,7 @@ module UsersAuth
 
         def users_auth_context
           redirect_uri = params[:redirect_uri]
-          uri_host = URI.parse(redirect_uri).host rescue 'host'
+          uri_host = valid_redirect_uri!(redirect_uri).host
           state = params[:state]
           scope = USERS_SCOPE || uri_host || request.env['HTTP_HOST']
           { redirect_uri:, state:, scope: }

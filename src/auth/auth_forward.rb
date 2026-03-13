@@ -75,15 +75,42 @@ module AuthForward
         full_uri = "#{proto}://#{host}#{path}"
         full_uri_short, to_params = full_uri.split('?')
 
-        state = to_params.to_s == '' ? '' : "&state=#{Base64.urlsafe_encode64(to_params)}"
         LOGGER.info 'FORWARD_AUTH NO code - redirect to auth'
         params = {
           redirect_uri: full_uri_short,
           response_type: 'code',
-          scope: 'openid profile email',
-          state: state
+          scope: 'openid profile email'
         }
+        params[:state] = Base64.urlsafe_encode64(to_params) unless to_params.to_s.empty?
         redirect "#{FORWARD_OAUTH_AUTH_URL}?#{URI.encode_www_form(params)}", 302
+      end
+
+      def authorization_endpoint_uri
+        @authorization_endpoint_uri ||= URI.parse(FORWARD_OAUTH_AUTH_URL.to_s)
+      rescue URI::InvalidURIError
+        nil
+      end
+
+      def valid_redirect_uri!(redirect_uri)
+        halt 400, 'redirect_uri is required' if redirect_uri.to_s.empty?
+
+        uri = URI.parse(redirect_uri)
+        halt 400, 'redirect_uri must use http or https' unless %w[http https].include?(uri.scheme)
+        halt 400, 'redirect_uri host is required' if uri.host.to_s.empty?
+
+        auth_uri = authorization_endpoint_uri
+        auth_path = auth_uri&.path.to_s.empty? ? FORWARD_OAUTH_AUTH_URL.to_s : auth_uri.path.to_s
+        same_path = uri.path.to_s == auth_path
+        same_host = auth_uri.nil? || auth_uri.host.to_s.empty? || auth_uri.host == uri.host
+
+        if same_path && same_host
+          LOGGER.warn "Rejected recursive redirect_uri: #{redirect_uri}"
+          halt 400, 'redirect_uri must not point to the authorization endpoint'
+        end
+
+        uri
+      rescue URI::InvalidURIError
+        halt 400, 'redirect_uri is invalid'
       end
 
       # todo: Maybe narrow which headers get forwarded (e.g., only X-*).

@@ -25,7 +25,7 @@ module TelegramAuth
 
       get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         redirect_uri = params[:redirect_uri]
-        uri_host = URI.parse(redirect_uri).host rescue 'host'
+        uri_host = valid_redirect_uri!(redirect_uri).host
 
         state = params[:state] rescue nil
         scope = AUTH_SCOPE || uri_host || request.env['HTTP_HOST']

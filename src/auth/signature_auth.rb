@@ -11,7 +11,7 @@ module SignatureAuth
       token = get_token
 
       redirect_uri = params[:redirect_uri]
-      uri_host = URI.parse(redirect_uri).host rescue 'host'
+      uri_host = valid_redirect_uri!(redirect_uri).host
 
       state = params[:state]
       state_q = state.to_s == '' ? '' : "&state=#{state}"
