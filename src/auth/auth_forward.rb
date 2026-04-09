@@ -52,6 +52,11 @@ module AuthForward
     base.class_eval do
       helpers Token
 
+      if ENV['USERS_DB_URL'].to_s != '' && FORWARD_AUTH[:method].nil?
+        require_relative 'db_user_auth'
+        helpers DBUserAuth
+      end
+
       if ENV['USERS_YAML'].to_s != '' && File.file?(ENV['USERS_YAML']) && FORWARD_AUTH[:method].nil?
         require_relative 'users_auth'
         helpers UsersAuth
