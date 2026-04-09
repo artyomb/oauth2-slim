@@ -24,7 +24,7 @@ module DBUserAuth
     base.class_eval do
       helpers do
         def users_db
-          @users_db ||= Sequel.connect(USERS_DB_URL)
+          @users_db ||= Sequel.connect(USERS_DB_URL).tap { _1.run('CREATE EXTENSION IF NOT EXISTS pgcrypto') }
         end
 
         def normalize_user_record(record)
