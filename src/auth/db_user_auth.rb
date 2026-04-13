@@ -139,6 +139,10 @@ module DBUserAuth
           redirect "#{redirect_uri}?code=#{authorization_code}#{state_query(state)}"
         end
 
+        def render_users_auth(context, error: nil)
+          slim :users_auth, locals: context.merge(error:)
+        end
+
         def token_attributes(user, fallback_login: nil)
           login = (user['login'] || fallback_login).to_s
           { login:, name: user['name'], role: user['role'], org: user['org'], email: user['email'] || "#{login}@local.net" }.compact
@@ -164,7 +168,7 @@ module DBUserAuth
 
         issue_auth_code(context[:scope], context[:redirect_uri], context[:state], token_attributes(decode_token(token))) if valid_token?(token)
 
-        slim :users_auth, locals: context
+        render_users_auth(context)
       end
 
       post DB_USER_AUTH_PATH do
@@ -177,7 +181,7 @@ module DBUserAuth
           issue_auth_code(context[:scope], context[:redirect_uri], context[:state], attributes)
         end
 
-        slim :users_auth, locals: context.merge(error: 'Invalid login/password or user disabled')
+        render_users_auth(context, error: 'Invalid login/password or user disabled')
       end
 
       get DB_USER_ADMIN_PATH do
