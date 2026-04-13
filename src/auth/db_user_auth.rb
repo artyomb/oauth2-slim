@@ -3,15 +3,12 @@ require 'uri'
 require 'json'
 
 USERS_DB_URL = ENV['USERS_DB_URL']
-USERS_DB_QUERY = ENV.fetch(
-  'USERS_DB_QUERY',
-  'SELECT login, name, role, org, email, enabled FROM users WHERE login = ? AND enabled = TRUE AND password_hash = crypt(?, password_hash) LIMIT 1'
-)
+USERS_DB_TABLE = ENV.fetch( 'USERS_DB_TABLE', 'users')
+USERS_DB_QUERY = ENV.fetch( 'USERS_DB_QUERY', 'SELECT login, name, role, org, email FROM users WHERE login = ? AND password_hash = crypt(?, password_hash) LIMIT 1')
 USERS_SCOPE = ENV['AUTH_SCOPE']
 FORWARD_OAUTH_AUTH_URL = ENV.fetch('FORWARD_OAUTH_AUTH_URL')
 DB_USER_ADMIN_PATH = ENV.fetch('DB_USER_ADMIN_PATH', '/admin/users')
-USER_FIELDS = %i[login name role org email enabled].freeze
-TOKEN_FIELDS = %i[login name role org email].freeze
+USER_FIELDS = %i[login name role org email].freeze
 DB_USER_AUTH_PATH = begin
   uri = URI.parse(FORWARD_OAUTH_AUTH_URL.to_s)
   uri.path.to_s.empty? ? FORWARD_OAUTH_AUTH_URL.to_s : uri.path.to_s
@@ -23,21 +20,15 @@ module DBUserAuth
   def self.included(base)
     base.class_eval do
       helpers do
-        def users_db
-          @users_db ||= Sequel.connect(USERS_DB_URL).tap { _1.run('CREATE EXTENSION IF NOT EXISTS pgcrypto') }
-        end
+        def users_db = @users_db ||= Sequel.connect(USERS_DB_URL).tap { _1.run('CREATE EXTENSION IF NOT EXISTS pgcrypto') }
+        def users_dataset = users_db[USERS_DB_TABLE.to_sym]
 
         def normalize_user_record(record)
           return nil unless record.is_a?(Hash)
 
-          record.each_with_object({}) do |(key, value), memo|
-            memo[key.to_s.downcase] = value
-          end
+          record.each_with_object({}) { |(key, value), memo| memo[key.to_s.downcase] = value }
         end
 
-        def users_dataset
-          users_db[:users]
-        end
 
         def current_auth_user
           token = get_token
@@ -58,7 +49,7 @@ module DBUserAuth
           clear_codes
           halt 404, "AUTH_CODES not found: #{code}" unless AUTH_CODES.key?(code)
 
-          attributes = AUTH_CODES[code].slice(:scope, *TOKEN_FIELDS)
+          attributes = AUTH_CODES[code].slice(:scope, *USER_FIELDS)
           attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
           generate_token attributes
           AUTH_CODES.delete code
@@ -89,10 +80,7 @@ module DBUserAuth
         end
 
         def user_row_attributes(record)
-          USER_FIELDS.each_with_object({}) do |field, attrs|
-            value = record[field]
-            attrs[field] = field == :enabled ? value != false : value.to_s
-          end
+          USER_FIELDS.each_with_object({}) { |field, attrs| attrs[field] = record[field].to_s }
         end
 
         def managed_users
@@ -114,14 +102,6 @@ module DBUserAuth
 
         def password_hash(value)
           Sequel.lit("crypt(?, gen_salt('bf'))", value.to_s)
-        end
-
-        def user_insert_attributes(attrs)
-          {
-            **attrs.slice(:login, :name, :role, :org, :email),
-            password_hash: password_hash(attrs[:password]),
-            enabled: true
-          }
         end
 
         def db_user(login, password)
@@ -218,7 +198,7 @@ module DBUserAuth
           admin_error!('password is required', status: 400) if attrs[:password].empty?
           admin_error!("User already exists: #{attrs[:login]}", status: 409) if users_dataset.where(login: attrs[:login]).count.positive?
 
-          users_dataset.insert(user_insert_attributes(attrs))
+          users_dataset.insert({ **attrs.slice(:login, :name, :role, :org, :email), password_hash: password_hash(attrs[:password]) })
           respond_admin_success("User #{attrs[:login]} created")
         end
       end
