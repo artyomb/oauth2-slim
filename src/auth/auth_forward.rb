@@ -53,21 +53,25 @@ module AuthForward
       helpers Token
 
       if ENV['USERS_DB_URL'].to_s != '' && FORWARD_AUTH[:method].nil?
+        Logger.info 'DBUserAuth'
         require_relative 'db_user_auth'
         helpers DBUserAuth
       end
 
       if ENV['USERS_YAML'].to_s != '' && File.file?(ENV['USERS_YAML']) && FORWARD_AUTH[:method].nil?
+        Logger.info 'UsersAuth'
         require_relative 'users_auth'
         helpers UsersAuth
       end
 
       if ENV['AUTH_VERIFY_KEY'] && FORWARD_AUTH[:method].nil?
+        Logger.info 'SignatureAuth'
         require_relative 'signature_auth'
         helpers SignatureAuth
       end
 
       if ENV['TELEGRAM_AUTH_BOT'] && FORWARD_AUTH[:method].nil?
+        Logger.info 'TelegramAuth'
         require_relative 'telegram_auth'
         helpers TelegramAuth
       end
