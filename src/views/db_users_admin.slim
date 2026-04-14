@@ -1,418 +1,423 @@
-.users-admin-page
-  - users_admin_config = { adminPath: admin_path, texts: { edit: t('user_admin.edit_user'), delete: t('user_admin.delete_user'), userFallback: 'user' } }
-  sass:
-    .users-admin-page
-      max-width: 1120px
-      margin: 0 auto
-      padding: calc(var(--space-xl) * 2) var(--space-xl) var(--space-xl)
-      color: var(--color-text)
+sass:
+  .users-admin-shell
+    max-width: 860px
+    margin: var(--space-xl) auto
+    display: grid
+    gap: var(--space-xl)
 
-    .users-admin-shell
-      max-width: 860px
-      margin: var(--space-xl) auto
-      display: grid
-      gap: var(--space-xl)
+  .users-admin-page
+    display: flex
+    flex-direction: column
+    align-items: center
 
-    .users-admin-messages
-      position: fixed
-      top: var(--space-xl)
-      right: var(--space-xl)
-      z-index: 400
-      display: grid
-      gap: var(--space-sm)
-      width: calc(100vw - 2rem)
-      max-width: 360px
-      pointer-events: none
+  .version
+    color: var(--color-text-muted)
+    font-size: var(--font-size-xs)
 
-    .flash
-      pointer-events: auto
-      padding: var(--space-md) var(--space-lg)
-      border-radius: var(--border-radius-sm)
-      border: var(--border-width) solid transparent
-      box-shadow: 0 12px 28px rgba(60, 64, 67, 0.18)
+  .users-admin-messages
+    position: fixed
+    top: var(--space-xl)
+    right: var(--space-xl)
+    z-index: 400
+    display: grid
+    gap: var(--space-sm)
+    width: calc(100vw - 2rem)
+    max-width: 360px
+    pointer-events: none
 
-    .flash.notice
-      background: #eaf6ed
-      color: #137333
-      border-color: rgba(19, 115, 51, 0.14)
+  .flash
+    pointer-events: auto
+    padding: var(--space-md) var(--space-lg)
+    border-radius: var(--border-radius-sm)
+    border: var(--border-width) solid transparent
+    box-shadow: 0 12px 28px rgba(60, 64, 67, 0.18)
 
-    .flash.error
-      background: #fce8e6
-      color: #c5221f
-      border-color: rgba(197, 34, 31, 0.14)
+  .flash.notice
+    background: #eaf6ed
+    color: #137333
+    border-color: rgba(19, 115, 51, 0.14)
 
-    .users-admin-panel
-      background: var(--color-background-card)
-      border: var(--border-width) solid var(--color-border)
-      border-radius: var(--border-radius-md)
-      box-shadow: var(--shadow-sm)
-      overflow: hidden
+  .flash.error
+    background: #fce8e6
+    color: #c5221f
+    border-color: rgba(197, 34, 31, 0.14)
 
-    .users-admin-panel-header
-      padding: var(--space-lg) var(--space-xl)
-      border-bottom: var(--border-width) solid var(--color-border-light)
+  .users-admin-panel
+    background: var(--color-background-card)
+    border: var(--border-width) solid var(--color-border)
+    border-radius: var(--border-radius-md)
+    box-shadow: var(--shadow-sm)
+    overflow: hidden
 
-    .users-admin-panel-header h2
-      font-size: var(--font-size-lg)
-      font-weight: var(--font-weight-medium)
-      margin-bottom: 0.2rem
+  .users-admin-panel-header
+    padding: var(--space-lg) var(--space-xl)
+    border-bottom: var(--border-width) solid var(--color-border-light)
 
-    .users-admin-panel-subtitle
-      color: var(--color-text-muted)
-      font-size: var(--font-size-sm)
+  .users-admin-panel-header h2
+    font-size: var(--font-size-lg)
+    font-weight: var(--font-weight-medium)
+    margin-bottom: 0.2rem
 
-    .users-admin-panel-body
-      padding: var(--space-xl)
+  .users-admin-panel-subtitle
+    color: var(--color-text-muted)
+    font-size: var(--font-size-sm)
 
-    .users-admin-panel-footer
-      padding: 0 var(--space-xl) var(--space-xl)
+  .users-admin-panel-body
+    padding: var(--space-xl)
 
-    .users-table
-      width: 100%
-      border-collapse: collapse
-      table-layout: fixed
+  .users-admin-panel-footer
+    padding: 0 var(--space-xl) var(--space-xl)
 
-    .users-table th,
-    .users-table td
-      text-align: left
-      padding: 0.9rem 1rem
-      vertical-align: top
+  .users-table
+    width: 100%
+    border-collapse: collapse
+    table-layout: fixed
 
-    .users-table th
-      vertical-align: middle
-      color: var(--color-text-muted)
-      font-size: var(--font-size-xs)
-      font-weight: var(--font-weight-medium)
-      text-transform: uppercase
-      letter-spacing: 0.06em
-      white-space: nowrap
-      line-height: 1.2
+  .users-table th,
+  .users-table td
+    text-align: left
+    padding: 0.9rem 1rem
+    vertical-align: top
 
-    .users-table th:nth-child(1),
-    .users-table td:nth-child(1)
-      width: 50%
+  .users-table th
+    vertical-align: middle
+    color: var(--color-text-muted)
+    font-size: var(--font-size-xs)
+    font-weight: var(--font-weight-medium)
+    text-transform: uppercase
+    letter-spacing: 0.06em
+    white-space: nowrap
+    line-height: 1.2
 
-    .users-table th:nth-child(2),
-    .users-table td:nth-child(2)
-      width: 20%
+  .users-table th:nth-child(1),
+  .users-table td:nth-child(1)
+    width: 50%
 
-    .users-table th:nth-child(3),
-    .users-table td:nth-child(3)
-      width: 30%
+  .users-table th:nth-child(2),
+  .users-table td:nth-child(2)
+    width: 20%
 
-    .users-table th:last-child,
-    .users-table td:last-child
-      text-align: right
+  .users-table th:nth-child(3),
+  .users-table td:nth-child(3)
+    width: 30%
 
-    .users-table tbody td
-      border-top: var(--border-width) solid var(--color-border-light)
+  .users-table th:last-child,
+  .users-table td:last-child
+    text-align: right
 
-    .users-table tbody tr:hover
-      background: #fafcff
+  .users-table tbody td
+    border-top: var(--border-width) solid var(--color-border-light)
 
-    .user-main
-      display: grid
-      gap: 0.2rem
+  .users-table tbody tr:hover
+    background: #fafcff
 
-    .user-login
-      font-weight: var(--font-weight-medium)
-      color: var(--color-text)
+  .user-main
+    display: grid
+    gap: 0.2rem
 
-    .user-meta
-      color: var(--color-text-muted)
-      font-size: var(--font-size-sm)
-      line-height: 1.4
+  .user-login
+    font-weight: var(--font-weight-medium)
+    color: var(--color-text)
 
-    .role-text
-      font-weight: var(--font-weight-medium)
-      color: var(--color-text)
+  .user-meta
+    color: var(--color-text-muted)
+    font-size: var(--font-size-sm)
+    line-height: 1.4
 
-    .row-actions
-      display: flex
-      gap: var(--space-sm)
-      flex-wrap: wrap
-      justify-content: flex-end
+  .role-text
+    font-weight: var(--font-weight-medium)
+    color: var(--color-text)
 
-    .users-table thead th:last-child
-      padding-right: 1rem
+  .row-actions
+    display: flex
+    gap: var(--space-sm)
+    flex-wrap: wrap
+    justify-content: flex-end
 
-    .users-table thead th:first-child
-      padding-left: 1rem
+  .users-table thead th:last-child
+    padding-right: 1rem
 
-    .users-admin-empty
-      padding: var(--space-lg)
-      color: var(--color-text-muted)
-      text-align: center
+  .users-table thead th:first-child
+    padding-left: 1rem
 
-    .form-grid
-      display: grid
-      gap: var(--space-md)
+  .users-admin-empty
+    padding: var(--space-lg)
+    color: var(--color-text-muted)
+    text-align: center
 
-    .form-row
-      display: grid
-      gap: var(--space-xs)
+  .form-grid
+    display: grid
+    gap: var(--space-md)
 
+  .form-row
+    display: grid
+    gap: var(--space-xs)
+
+  .form-split
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: var(--space-md)
+
+  .form-row label
+    color: var(--color-text)
+    font-weight: var(--font-weight-medium)
+
+  .form-row input
+    width: 100%
+    padding: 0.8rem 0.85rem
+    border: var(--border-width) solid var(--color-border)
+    border-radius: var(--border-radius-sm)
+    background: var(--color-background-card)
+    color: var(--color-text)
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast)
+
+  .form-row input:focus
+    outline: none
+    border-color: rgba(26, 115, 232, 0.45)
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12)
+
+  .button-row
+    display: flex
+    align-items: center
+    align-content: center
+    gap: var(--space-sm)
+    flex-wrap: wrap
+    margin-top: var(--space-sm)
+
+  .modal-actions
+    margin-top: var(--space-lg)
+    display: flex
+    align-items: center
+    gap: var(--space-sm)
+    flex-wrap: wrap
+
+  .password-form
+    display: block
+
+  .password-form .form-row
+    margin-bottom: var(--space-md)
+
+  .password-form .modal-actions
+    margin-top: 0
+
+  .modal-actions .btn,
+  .modal-actions form
+    flex: 0 0 auto
+
+  .button-row .btn,
+  .button-row form
+    flex: 0 0 auto
+
+  .button-row form
+    display: inline-flex
+
+  .btn
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    min-height: 36px
+    padding: 0 0.9rem
+    border-radius: 999px
+    border: var(--border-width) solid var(--color-border)
+    background: var(--color-background-card)
+    color: var(--color-text)
+    text-decoration: none
+    cursor: pointer
+    font-size: var(--font-size-sm)
+    font-weight: var(--font-weight-medium)
+    transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast)
+
+  .btn:hover
+    background: var(--color-hover-light)
+    transform: translateY(-1px)
+
+  .btn[disabled]
+    opacity: 0.65
+    cursor: default
+    transform: none
+
+  .btn-primary
+    background: var(--color-primary)
+    border-color: var(--color-primary)
+    color: white
+
+  .btn-primary:hover
+    background: #1557b0
+    border-color: #1557b0
+
+  .btn-secondary
+    background: #f7faff
+    border-color: #d8e6fb
+    color: #1a73e8
+
+  .btn-secondary:hover
+    background: #edf4ff
+
+  .btn-danger
+    background: #fff6f6
+    border-color: #f1d2cf
+    color: #c5221f
+
+  .btn-ghost
+    background: transparent
+    border-color: transparent
+    color: var(--color-text-muted)
+
+  .btn-ghost:hover
+    background: var(--color-hover-light)
+    border-color: transparent
+
+  .btn-icon::before
+    display: inline-block
+    margin-right: 0.4rem
+    font-size: 24px
+    line-height: 1
+
+  .btn-icon-only
+    width: 40px
+    height: 40px
+    min-width: 40px
+    min-height: 40px
+    padding: 0
+    border-radius: 999px
+    flex: 0 0 40px
+
+  .btn-icon-only::before
+    margin-right: 0
+    font-size: 24px
+
+  .btn-close
+    width: 40px
+    height: 40px
+    min-width: 40px
+    min-height: 40px
+    padding: 0
+    border-radius: 999px
+    flex: 0 0 40px
+    font-size: 0
+
+  .btn-close::before
+    content: "\00D7"
+    font-size: 24px
+    line-height: 1
+    margin-right: 0
+
+  .btn-new::before
+    content: '+'
+
+  .btn-edit::before
+    content: "\270E"
+
+  .btn-delete::before
+    content: "\00D7"
+
+  .hint
+    color: var(--color-text-muted)
+    font-size: var(--font-size-sm)
+    margin-top: var(--space-xs)
+
+  .modal-copy
+    color: var(--color-text-muted)
+    line-height: 1.5
+
+  .modal-copy + .modal-actions
+    margin-top: var(--space-xl)
+
+  .modal-overlay
+    position: fixed
+    inset: 0
+    display: none
+    align-items: center
+    justify-content: center
+    padding: var(--space-xl)
+    background: rgba(32, 33, 36, 0.32)
+    z-index: 300
+
+  .modal-overlay.is-open
+    display: flex
+
+  .modal-card
+    width: 100%
+    max-width: 560px
+    max-height: calc(100vh - 3rem)
+    overflow: auto
+    background: var(--color-background-card)
+    border: var(--border-width) solid var(--color-border)
+    border-radius: var(--border-radius-md)
+    box-shadow: 0 16px 40px rgba(60,64,67,0.2)
+
+  .modal-header
+    display: flex
+    justify-content: space-between
+    align-items: flex-start
+    gap: var(--space-md)
+    padding: var(--space-xl)
+    border-bottom: var(--border-width) solid var(--color-border-light)
+
+  .modal-title h2
+    font-size: var(--font-size-xl)
+    font-weight: var(--font-weight-medium)
+    margin-bottom: 0.2rem
+
+  .modal-title p
+    color: var(--color-text-muted)
+    font-size: var(--font-size-sm)
+
+  .modal-body
+    padding: var(--space-xl)
+
+  .modal-section + .modal-section
+    margin-top: var(--space-xl)
+    padding-top: var(--space-xl)
+    border-top: var(--border-width) solid var(--color-border-light)
+
+  @media (max-width: 900px)
     .form-split
-      display: grid
-      grid-template-columns: repeat(2, minmax(0, 1fr))
-      gap: var(--space-md)
+      grid-template-columns: 1fr
 
-    .form-row label
-      color: var(--color-text)
-      font-weight: var(--font-weight-medium)
+    .users-table thead
+      display: none
 
-    .form-row input
-      width: 100%
-      padding: 0.8rem 0.85rem
-      border: var(--border-width) solid var(--color-border)
-      border-radius: var(--border-radius-sm)
-      background: var(--color-background-card)
-      color: var(--color-text)
-      transition: border-color var(--transition-fast), box-shadow var(--transition-fast)
-
-    .form-row input:focus
-      outline: none
-      border-color: rgba(26, 115, 232, 0.45)
-      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12)
-
-    .button-row
-      display: flex
-      align-items: center
-      align-content: center
-      gap: var(--space-sm)
-      flex-wrap: wrap
-      margin-top: var(--space-sm)
-
-    .modal-actions
-      margin-top: var(--space-lg)
-      display: flex
-      align-items: center
-      gap: var(--space-sm)
-      flex-wrap: wrap
-
-    .password-form
+    .users-table,
+    .users-table tbody,
+    .users-table tr,
+    .users-table td
       display: block
 
-    .password-form .form-row
-      margin-bottom: var(--space-md)
-
-    .password-form .modal-actions
-      margin-top: 0
-
-    .modal-actions .btn,
-    .modal-actions form
-      flex: 0 0 auto
-
-    .button-row .btn,
-    .button-row form
-      flex: 0 0 auto
-
-    .button-row form
-      display: inline-flex
-
-    .btn
-      display: inline-flex
-      align-items: center
-      justify-content: center
-      min-height: 36px
-      padding: 0 0.9rem
-      border-radius: 999px
-      border: var(--border-width) solid var(--color-border)
-      background: var(--color-background-card)
-      color: var(--color-text)
-      text-decoration: none
-      cursor: pointer
-      font-size: var(--font-size-sm)
-      font-weight: var(--font-weight-medium)
-      transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast)
-
-    .btn:hover
-      background: var(--color-hover-light)
-      transform: translateY(-1px)
-
-    .btn[disabled]
-      opacity: 0.65
-      cursor: default
-      transform: none
-
-    .btn-primary
-      background: var(--color-primary)
-      border-color: var(--color-primary)
-      color: white
-
-    .btn-primary:hover
-      background: #1557b0
-      border-color: #1557b0
-
-    .btn-secondary
-      background: #f7faff
-      border-color: #d8e6fb
-      color: #1a73e8
-
-    .btn-secondary:hover
-      background: #edf4ff
-
-    .btn-danger
-      background: #fff6f6
-      border-color: #f1d2cf
-      color: #c5221f
-
-    .btn-ghost
-      background: transparent
-      border-color: transparent
-      color: var(--color-text-muted)
-
-    .btn-ghost:hover
-      background: var(--color-hover-light)
-      border-color: transparent
-
-    .btn-icon::before
-      display: inline-block
-      margin-right: 0.4rem
-      font-size: 24px
-      line-height: 1
-
-    .btn-icon-only
-      width: 40px
-      height: 40px
-      min-width: 40px
-      min-height: 40px
-      padding: 0
-      border-radius: 999px
-      flex: 0 0 40px
-
-    .btn-icon-only::before
-      margin-right: 0
-      font-size: 24px
-
-    .btn-close
-      width: 40px
-      height: 40px
-      min-width: 40px
-      min-height: 40px
-      padding: 0
-      border-radius: 999px
-      flex: 0 0 40px
-      font-size: 0
-
-    .btn-close::before
-      content: '×'
-      font-size: 24px
-      line-height: 1
-      margin-right: 0
-
-    .btn-new::before
-      content: '+'
-
-    .btn-edit::before
-      content: '✎'
-
-    .btn-delete::before
-      content: '×'
-
-    .hint
-      color: var(--color-text-muted)
-      font-size: var(--font-size-sm)
-      margin-top: var(--space-xs)
-
-    .modal-copy
-      color: var(--color-text-muted)
-      line-height: 1.5
-
-    .modal-copy + .modal-actions
-      margin-top: var(--space-xl)
-
-    .modal-overlay
-      position: fixed
-      inset: 0
-      display: none
-      align-items: center
-      justify-content: center
-      padding: var(--space-xl)
-      background: rgba(32, 33, 36, 0.32)
-      z-index: 300
-
-    .modal-overlay.is-open
-      display: flex
-
-    .modal-card
-      width: 100%
-      max-width: 560px
-      max-height: calc(100vh - 3rem)
-      overflow: auto
-      background: var(--color-background-card)
-      border: var(--border-width) solid var(--color-border)
-      border-radius: var(--border-radius-md)
-      box-shadow: 0 16px 40px rgba(60,64,67,0.2)
-
-    .modal-header
-      display: flex
-      justify-content: space-between
-      align-items: flex-start
-      gap: var(--space-md)
-      padding: var(--space-xl)
-      border-bottom: var(--border-width) solid var(--color-border-light)
-
-    .modal-title h2
-      font-size: var(--font-size-xl)
-      font-weight: var(--font-weight-medium)
-      margin-bottom: 0.2rem
-
-    .modal-title p
-      color: var(--color-text-muted)
-      font-size: var(--font-size-sm)
-
-    .modal-body
-      padding: var(--space-xl)
-
-    .modal-section + .modal-section
-      margin-top: var(--space-xl)
-      padding-top: var(--space-xl)
+    .users-table tbody tr
+      padding: var(--space-md) 0
       border-top: var(--border-width) solid var(--color-border-light)
 
-    @media (max-width: 900px)
-      .form-split
-        grid-template-columns: 1fr
+    .users-table tbody td
+      padding: 0 0 var(--space-sm)
+      border-top: none
 
-      .users-table thead
-        display: none
+    .row-actions
+      justify-content: flex-start
 
-      .users-table,
-      .users-table tbody,
-      .users-table tr,
-      .users-table td
-        display: block
+    .users-table
+      table-layout: auto
 
-      .users-table tbody tr
-        padding: var(--space-md) 0
-        border-top: var(--border-width) solid var(--color-border-light)
+  @media (max-width: 640px)
+    .users-admin-page
+      padding: calc(var(--space-md) * 2) var(--space-md) var(--space-md)
 
-      .users-table tbody td
-        padding: 0 0 var(--space-sm)
-        border-top: none
+    .users-admin-messages
+      top: var(--space-md)
+      right: var(--space-md)
+      width: calc(100vw - 2 * var(--space-md))
 
-      .row-actions
-        justify-content: flex-start
+    .users-admin-panel-header,
+    .users-admin-panel-body,
+    .users-admin-panel-footer,
+    .modal-header,
+    .modal-body
+      padding: var(--space-lg)
 
-      .users-table
-        table-layout: auto
 
-    @media (max-width: 640px)
-      .users-admin-page
-        padding: calc(var(--space-md) * 2) var(--space-md) var(--space-md)
 
-      .users-admin-messages
-        top: var(--space-md)
-        right: var(--space-md)
-        width: calc(100vw - 2 * var(--space-md))
-
-      .users-admin-panel-header,
-      .users-admin-panel-body,
-      .users-admin-panel-footer,
-      .modal-header,
-      .modal-body
-        padding: var(--space-lg)
-
+.users-admin-page
+  - users_admin_config = { adminPath: admin_path, texts: { edit: t('user_admin.edit_user'), delete: t('user_admin.delete_user'), userFallback: 'user' } }
   .users-admin-shell
     .users-admin-messages#users-admin-messages
 
@@ -443,6 +448,7 @@
       .users-admin-panel-footer
         .button-row
           button.btn.btn-primary.btn-icon.btn-new type="button" data-open-modal="create-user-modal" = t('user_admin.new_user')
+  span.version = "Build v " + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
 
   #create-user-modal.modal-overlay data-modal="create-user-modal"
     .modal-card
