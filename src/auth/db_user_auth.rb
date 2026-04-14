@@ -3,38 +3,44 @@ require 'uri'
 require 'json'
 
 USERS_DB_URL = ENV['USERS_DB_URL']
-USERS_DB_TABLE = ENV.fetch( 'USERS_DB_TABLE', 'users')
-USERS_DB_QUERY = ENV.fetch( 'USERS_DB_QUERY', 'SELECT login, name, role, org, email FROM users WHERE login = ? AND password = crypt(?, password) LIMIT 1')
 USERS_SCOPE = ENV['AUTH_SCOPE']
 FORWARD_OAUTH_AUTH_URL = ENV.fetch('FORWARD_OAUTH_AUTH_URL')
 DB_USER_ADMIN_PATH = ENV.fetch('DB_USER_ADMIN_PATH', '/admin/users')
+DB_USER_SEED = ENV.fetch('DB_USER_SEED', 'true')
 USER_FIELDS = %i[login name role org email].freeze
-DB_USER_AUTH_PATH = begin
-  uri = URI.parse(FORWARD_OAUTH_AUTH_URL.to_s)
-  uri.path.to_s.empty? ? FORWARD_OAUTH_AUTH_URL.to_s : uri.path.to_s
-rescue URI::InvalidURIError
-  FORWARD_OAUTH_AUTH_URL.to_s
+
+DB = Sequel.connect(USERS_DB_URL)
+DB.run 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
+DB.create_table? :oauth_users do
+  primary_key :id
+  String :login, unique: true, null: false
+  String :password, null: false
+  String :name, null: true
+  String :role, null: true
+  String :org, null: true
+  String :email, null: true
+  DateTime :created_at, null: false, default: Sequel.lit('NOW()')
+  DateTime :updated_at, null: false, default: Sequel.lit('NOW()')
+  DateTime :deleted_at, null: true
+end
+class OAuthUser < Sequel::Model(:oauth_users)
+  plugin :validation_helpers
+  plugin :timestamps, create: :created_at, update: :updated_at, update_on_create: true
+end
+
+if DB_USER_SEED
+  OAuthUser.insert( login: 'admin', password: Sequel.lit("crypt(?, gen_salt('bf'))", 'admin'), name: 'admin', role: 'admin', email: 'admin@local.net') unless OAuthUser.where(login: 'admin').count.positive?
 end
 
 module DBUserAuth
   def self.included(base)
     base.class_eval do
       helpers do
-        def users_db = @users_db ||= Sequel.connect(USERS_DB_URL).tap { _1.run('CREATE EXTENSION IF NOT EXISTS pgcrypto') }
-        def users_dataset = users_db[USERS_DB_TABLE.to_sym]
-
-        def normalize_user_record(record)
-          return nil unless record.is_a?(Hash)
-
-          record.each_with_object({}) { |(key, value), memo| memo[key.to_s.downcase] = value }
-        end
-
-
         def current_auth_user
           token = get_token
           return nil unless valid_token?(token)
 
-          decode_token(token)
+          decode_token(token).transform_keys(&:to_sym)
         rescue StandardError
           nil
         end
@@ -59,7 +65,7 @@ module DBUserAuth
         def require_admin_user!
           user = current_auth_user
           redirect "#{FORWARD_OAUTH_AUTH_URL}?#{URI.encode_www_form(redirect_uri: admin_redirect_uri, response_type: 'code', scope: USERS_SCOPE || request.host)}" unless user
-          halt 403, 'Admin role required' unless user && user['role'].to_s == 'admin'
+          halt 403, 'Admin role required' unless user && user[:role].to_s == 'admin'
         end
 
         def render_admin_json(status: 200, notice: nil, error: nil, users: nil)
@@ -84,13 +90,13 @@ module DBUserAuth
         end
 
         def managed_users
-          users_dataset.select(*USER_FIELDS).order(:login).all.map { |record| user_row_attributes(record) }
+          OAuthUser.select(*USER_FIELDS).order(:login).all.map { |record| user_row_attributes(record) }
         end
 
         def require_user!(login)
           admin_error!('login is required', status: 400) if login.to_s.strip.empty?
 
-          record = users_dataset.where(login: login.to_s).first
+          record = OAuthUser.where(login: login.to_s).first
           admin_error!("User not found: #{login}", status: 404) unless record
 
           user_row_attributes(record)
@@ -107,7 +113,7 @@ module DBUserAuth
         def db_user(login, password)
           return nil if [USERS_DB_URL, login, password].any? { |value| value.to_s.empty? }
 
-          normalize_user_record(users_db.fetch(USERS_DB_QUERY, login.to_s, password.to_s).first)
+          OAuthUser.select(*USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password = crypt(?, password)', password.to_s)).first
         rescue => e
           LOGGER.error "Cannot fetch DB user login=#{login}: #{e.class}: #{e.message}"
           nil
@@ -144,8 +150,8 @@ module DBUserAuth
         end
 
         def token_attributes(user, fallback_login: nil)
-          login = (user['login'] || fallback_login).to_s
-          { login:, name: user['name'], role: user['role'], org: user['org'], email: user['email'] || "#{login}@local.net" }.compact
+          login = (user[:login] || fallback_login).to_s
+          { login:, name: user[:name], role: user[:role], org: user[:org], email: user[:email] || "#{login}@local.net" }.compact
         end
 
         def with_db_error(message)
@@ -162,16 +168,16 @@ module DBUserAuth
 
       end
 
-      get DB_USER_AUTH_PATH do
+      get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         token = get_token
         context = users_auth_context
 
-        issue_auth_code(context[:scope], context[:redirect_uri], context[:state], token_attributes(decode_token(token))) if valid_token?(token)
+        issue_auth_code(context[:scope], context[:redirect_uri], context[:state], token_attributes(current_auth_user)) if valid_token?(token)
 
         render_users_auth(context)
       end
 
-      post DB_USER_AUTH_PATH do
+      post(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         context = users_auth_context
 
         login = (params[:login] || params[:username]).to_s.strip
@@ -200,9 +206,9 @@ module DBUserAuth
           attrs = { **user_params(:login, :name, :role, :org, :email), password: params[:password].to_s }
           admin_error!('login is required', status: 400) if attrs[:login].empty?
           admin_error!('password is required', status: 400) if attrs[:password].empty?
-          admin_error!("User already exists: #{attrs[:login]}", status: 409) if users_dataset.where(login: attrs[:login]).count.positive?
+          admin_error!("User already exists: #{attrs[:login]}", status: 409) if OAuthUser.where(login: attrs[:login]).count.positive?
 
-          users_dataset.insert({ **attrs.slice(:login, :name, :role, :org, :email), password: password_hash(attrs[:password]) })
+          OAuthUser.insert({ **attrs.slice(:login, :name, :role, :org, :email), password: password_hash(attrs[:password]) })
           respond_admin_success("User #{attrs[:login]} created")
         end
       end
@@ -210,7 +216,7 @@ module DBUserAuth
       post "#{DB_USER_ADMIN_PATH}/:login" do |login|
         admin_db_action("Cannot update DB user login=#{login}") do
           require_user!(login)
-          users_dataset.where(login: login).update(user_params(:name, :role, :org, :email))
+          OAuthUser.where(login: login).update(user_params(:name, :role, :org, :email))
           respond_admin_success("User #{login} updated")
         end
       end
@@ -219,7 +225,7 @@ module DBUserAuth
         admin_db_action("Cannot update DB user password login=#{login}") do
           require_user!(login)
           admin_error!('password is required', status: 400) if params[:password].to_s.empty?
-          users_dataset.where(login: login.to_s).update(password: password_hash(params[:password]))
+          OAuthUser.where(login: login.to_s).update(password: password_hash(params[:password]))
           respond_admin_success("Password updated for #{login}")
         end
       end
@@ -227,7 +233,7 @@ module DBUserAuth
       post "#{DB_USER_ADMIN_PATH}/:login/delete" do |login|
         admin_db_action("Cannot delete DB user login=#{login}") do
           require_user!(login)
-          users_dataset.where(login: login).delete
+          OAuthUser.where(login: login).delete
           respond_admin_success("User #{login} deleted")
         end
       end
