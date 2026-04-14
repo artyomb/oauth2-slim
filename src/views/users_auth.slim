@@ -1,8 +1,9 @@
 sass:
   .login-container
     display: flex
-    align-items: flex-start
+    align-items: center;
     justify-content: center
+    flex-direction: column;
     min-height: auto
     padding: var(--space-xl) 0
     background: var(--color-background)
@@ -107,6 +108,10 @@ sass:
     margin-bottom: var(--space-sm)
     text-align: left
 
+  .version
+    margin-top: var(--space-sm)
+    color: var(--color-text-muted)
+    font-size: var(--font-size-xs)
 .login-container
   .login-card
     .locale-switch
@@ -129,3 +134,5 @@ sass:
         label for="password" = t('auth.password_label')
         input.form-input#password type="password" name="password" required=true autocomplete="current-password"
       button.login-btn type="submit" = t('auth.password_login_button')
+  span.version = "Build v " + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
+    
