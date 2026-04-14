@@ -4,7 +4,7 @@ require 'json'
 
 USERS_DB_URL = ENV['USERS_DB_URL']
 USERS_DB_TABLE = ENV.fetch( 'USERS_DB_TABLE', 'users')
-USERS_DB_QUERY = ENV.fetch( 'USERS_DB_QUERY', 'SELECT login, name, role, org, email FROM users WHERE login = ? AND password_hash = crypt(?, password_hash) LIMIT 1')
+USERS_DB_QUERY = ENV.fetch( 'USERS_DB_QUERY', 'SELECT login, name, role, org, email FROM users WHERE login = ? AND password = crypt(?, password) LIMIT 1')
 USERS_SCOPE = ENV['AUTH_SCOPE']
 FORWARD_OAUTH_AUTH_URL = ENV.fetch('FORWARD_OAUTH_AUTH_URL')
 DB_USER_ADMIN_PATH = ENV.fetch('DB_USER_ADMIN_PATH', '/admin/users')
@@ -202,7 +202,7 @@ module DBUserAuth
           admin_error!('password is required', status: 400) if attrs[:password].empty?
           admin_error!("User already exists: #{attrs[:login]}", status: 409) if users_dataset.where(login: attrs[:login]).count.positive?
 
-          users_dataset.insert({ **attrs.slice(:login, :name, :role, :org, :email), password_hash: password_hash(attrs[:password]) })
+          users_dataset.insert({ **attrs.slice(:login, :name, :role, :org, :email), password: password_hash(attrs[:password]) })
           respond_admin_success("User #{attrs[:login]} created")
         end
       end
@@ -219,7 +219,7 @@ module DBUserAuth
         admin_db_action("Cannot update DB user password login=#{login}") do
           require_user!(login)
           admin_error!('password is required', status: 400) if params[:password].to_s.empty?
-          users_dataset.where(login: login.to_s).update(password_hash: password_hash(params[:password]))
+          users_dataset.where(login: login.to_s).update(password: password_hash(params[:password]))
           respond_admin_success("Password updated for #{login}")
         end
       end
