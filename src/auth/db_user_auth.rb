@@ -114,7 +114,7 @@ module DBUserAuth
         def db_user(login, password)
           return nil if [USERS_DB_URL, login, password].any? { |value| value.to_s.empty? }
 
-          OAuthUser.select(*USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password = crypt(?, password)', password.to_s)).first
+          OAuthUser.select(:id, *USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password = crypt(?, password)', password.to_s)).first
         rescue => e
           LOGGER.error "Cannot fetch DB user login=#{login}: #{e.class}: #{e.message}"
           nil
