@@ -8,6 +8,7 @@ FORWARD_OAUTH_AUTH_URL = ENV.fetch('FORWARD_OAUTH_AUTH_URL')
 DB_USER_ADMIN_PATH = ENV.fetch('DB_USER_ADMIN_PATH', '/admin/users')
 DB_USER_SEED = ENV.fetch('DB_USER_SEED', 'true')
 USER_FIELDS = %i[login name role org email].freeze
+TOKEN_USER_FIELDS = %i[uid login name role org email].freeze
 
 DB = Sequel.connect(USERS_DB_URL)
 DB.run 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
@@ -55,7 +56,7 @@ module DBUserAuth
           clear_codes
           halt 404, "AUTH_CODES not found: #{code}" unless AUTH_CODES.key?(code)
 
-          attributes = AUTH_CODES[code].slice(:scope, *USER_FIELDS)
+          attributes = AUTH_CODES[code].slice(:scope, *TOKEN_USER_FIELDS)
           attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
           generate_token attributes
           AUTH_CODES.delete code
@@ -151,7 +152,7 @@ module DBUserAuth
 
         def token_attributes(user, fallback_login: nil)
           login = (user[:login] || fallback_login).to_s
-          { id: user[:id], login:, name: user[:name], role: user[:role], org: user[:org], email: user[:email] || "#{login}@local.net" }.compact
+          { uid: user[:id], login:, name: user[:name], role: user[:role], org: user[:org], email: user[:email] || "#{login}@local.net" }.compact
         end
 
         def with_db_error(message)
