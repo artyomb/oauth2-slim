@@ -151,7 +151,7 @@ module DBUserAuth
 
         def token_attributes(user, fallback_login: nil)
           login = (user[:login] || fallback_login).to_s
-          { login:, name: user[:name], role: user[:role], org: user[:org], email: user[:email] || "#{login}@local.net" }.compact
+          { id: user[:id], login:, name: user[:name], role: user[:role], org: user[:org], email: user[:email] || "#{login}@local.net" }.compact
         end
 
         def with_db_error(message)
