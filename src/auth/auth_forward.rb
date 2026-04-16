@@ -152,7 +152,7 @@ module AuthForward
             LOGGER.info "FORWARD_AUTH code: #{code}"
             clear_codes
             if AUTH_CODES.key? code
-              attributes = AUTH_CODES[code].slice(:scope, :login, :name, :role, :org, :email)
+              attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
               attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
               generate_token attributes
 
