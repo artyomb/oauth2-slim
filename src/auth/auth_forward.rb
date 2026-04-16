@@ -181,6 +181,9 @@ module AuthForward
 
       get %r{.*/logout} do
         clear_token
+        cache_control :no_cache, :no_store, :must_revalidate
+        headers['Pragma'] = 'no-cache'
+        headers['Expires'] = '0'
 
         proto = request.env['HTTP_X_FORWARDED_PROTO']
         host = request.env['HTTP_X_FORWARDED_HOST']
