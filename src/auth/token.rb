@@ -1,6 +1,8 @@
 KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
 system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
 
+COOKIE_TOKEN_NAME = ENV.fetch('COOKIE_TOKEN_NAME', 'auth_token')
+
 if File.exist?(KEY_FILENAME)
   signature_key_hex = IO.read(KEY_FILENAME)
   SIGNING_KEY = Ed25519::SigningKey.new([signature_key_hex].pack('H*'))
@@ -12,10 +14,10 @@ end
 
 module Token
 
-  def get_token = request.cookies['auth_token']
+  def get_token = request.cookies[COOKIE_TOKEN_NAME]
 
   def clear_token
-    response.set_cookie('auth_token', value: '', path: '/', expires: Time.now - 3600, httponly: true)
+    response.set_cookie(COOKIE_TOKEN_NAME, value: '', path: '/', expires: Time.now - 3600, httponly: true)
   end
 
   def generate_token(external = {})
@@ -34,7 +36,7 @@ module Token
     }
     # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
     access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
-    response.set_cookie('auth_token', value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
+    response.set_cookie(COOKIE_TOKEN_NAME, value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
     LOGGER.debug "New token: #{data}"
     access_token
   end
