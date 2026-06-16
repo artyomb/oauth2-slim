@@ -15,7 +15,8 @@ module OpenIDConnect
           authorization_endpoint: "#{uri}/openid-connect/auth", # login redirect
           token_endpoint: "#{uri}/openid-connect/token", # exchange code for tokens
           userinfo_endpoint: "#{uri}/openid-connect/userinfo", # fetch user info
-          jwks_uri: "#{uri}/openid-connect/certs" # verify ID token signature
+          jwks_uri: "#{uri}/openid-connect/certs", # verify ID token signature
+          end_session_endpoint: "#{uri}/openid-connect/logout"
         }.to_json
       end
     end

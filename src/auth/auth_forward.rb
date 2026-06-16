@@ -134,6 +134,20 @@ module AuthForward
         end
       end
 
+      def logout
+        clear_token
+        session.delete(:auth_code) if session.key?(:auth_code)
+        cache_control :no_cache, :no_store, :must_revalidate
+        headers['Pragma'] = 'no-cache'
+        headers['Expires'] = '0'
+      end
+
+      def logout_redirect_uri
+        proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.scheme
+        host = request.env['HTTP_X_FORWARDED_HOST'] || request.host_with_port
+        "#{proto}://#{host}"
+      end
+
       get '/auth' do
         # force ?code= detect even token is valid ...
         raw_uri = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI'] || ''
@@ -180,15 +194,8 @@ module AuthForward
       end
 
       get %r{.*/logout} do
-        clear_token
-        cache_control :no_cache, :no_store, :must_revalidate
-        headers['Pragma'] = 'no-cache'
-        headers['Expires'] = '0'
-
-        proto = request.env['HTTP_X_FORWARDED_PROTO']
-        host = request.env['HTTP_X_FORWARDED_HOST']
-        uri = "#{proto}://#{host}"
-        redirect uri
+        logout
+        redirect logout_redirect_uri
       end
 
     end
