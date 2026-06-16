@@ -11,6 +11,8 @@ USER_FIELDS = %i[login name role org email].freeze
 TOKEN_USER_FIELDS = %i[uid login name role org email].freeze
 
 DB = Sequel.connect(USERS_DB_URL)
+DB.extension :connection_validator
+DB.pool.connection_validation_timeout = ENV.fetch('DB_CONNECTION_VALIDATION_TIMEOUT', '60').to_i
 DB.run 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
 DB.create_table? :oauth_users do
   primary_key :id
