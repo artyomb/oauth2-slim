@@ -174,6 +174,7 @@ module DBUserAuth
       get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         token = get_token
         context = users_auth_context
+        clear_legacy_tokens
 
         issue_auth_code(context[:scope], context[:redirect_uri], context[:state], token_attributes(current_auth_user)) if valid_token?(token)
 
@@ -182,6 +183,7 @@ module DBUserAuth
 
       post(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         context = users_auth_context
+        clear_legacy_tokens
 
         login = (params[:login] || params[:username]).to_s.strip
         password = params[:password].to_s

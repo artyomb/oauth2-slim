@@ -2,6 +2,8 @@ KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "
 system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
 
 COOKIE_TOKEN_NAME = ENV.fetch('COOKIE_TOKEN_NAME', 'auth_token')
+LEGACY_COOKIE_TOKEN_NAMES = ENV.fetch('COOKIE_TOKEN_LEGACY_NAMES', 'auth_token').split(',').map(&:strip).reject(&:empty?)
+TOKEN_COOKIE_NAMES = ([COOKIE_TOKEN_NAME] + LEGACY_COOKIE_TOKEN_NAMES).uniq
 
 if File.exist?(KEY_FILENAME)
   signature_key_hex = IO.read(KEY_FILENAME)
@@ -17,7 +19,17 @@ module Token
   def get_token = request.cookies[COOKIE_TOKEN_NAME]
 
   def clear_token
-    response.set_cookie(COOKIE_TOKEN_NAME, value: '', path: '/', expires: Time.now - 3600, httponly: true)
+    clear_token_cookies(TOKEN_COOKIE_NAMES)
+  end
+
+  def clear_legacy_tokens
+    clear_token_cookies(TOKEN_COOKIE_NAMES - [COOKIE_TOKEN_NAME])
+  end
+
+  def clear_token_cookies(names)
+    names.each do |name|
+      response.set_cookie(name, value: '', path: '/', expires: Time.now - 3600, httponly: true)
+    end
   end
 
   def generate_token(external = {})
