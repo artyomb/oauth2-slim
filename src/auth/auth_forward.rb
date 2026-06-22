@@ -31,7 +31,7 @@ def forward_auth(&block)
     LOGGER.debug 'Custom forward_auth method'
     instance_exec &block
   rescue => e
-    LOGGER.error 'Error in Custom forward_auth method: ', e
+    LOGGER.error "Error in Custom forward_auth method: #{LogSafety.exception_message(e)}"
     halt 401, 'Unauthorized'
   end
 end
@@ -40,7 +40,7 @@ def revoked?(&block)
   FORWARD_AUTH[:revoked?] = lambda do
     instance_exec &block
   rescue => e
-    LOGGER.error 'Error in is_revoked?: ', e
+    LOGGER.error "Error in is_revoked?: #{LogSafety.exception_message(e)}"
     raise
   end
 end
@@ -113,7 +113,7 @@ module AuthForward
         same_host = auth_uri.nil? || auth_uri.host.to_s.empty? || auth_uri.host == uri.host
 
         if same_path && same_host
-          LOGGER.warn "Rejected recursive redirect_uri: #{redirect_uri}"
+          LOGGER.warn "Rejected recursive redirect_uri: #{LogSafety.redact_url(redirect_uri)}"
           halt 400, 'redirect_uri must not point to the authorization endpoint'
         end
 
@@ -153,7 +153,7 @@ module AuthForward
         raw_uri = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI'] || ''
         query = raw_uri.split('?', 2)[1].to_s
         x_params = Rack::Utils.parse_nested_query(query)
-        LOGGER.debug :x_params, x_params
+        LOGGER.debug "Forward auth query received: #{LogSafety.redact_hash(x_params)}"
 
         if valid_token? && !FORWARD_AUTH[:revoked?].call && !x_params['code']
           LOGGER.info 'AUTH TOKEN VALID'
@@ -163,7 +163,7 @@ module AuthForward
         else
           code = x_params['code']
           if code
-            LOGGER.info "FORWARD_AUTH code: #{code}"
+            LOGGER.info 'FORWARD_AUTH code received'
             clear_codes
             if AUTH_CODES.key? code
               attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
@@ -179,10 +179,10 @@ module AuthForward
 
               state = x_params['state'] || ''
               state_q = state.to_s == '' ? '' : "?#{Base64.urlsafe_decode64 state}"
-              LOGGER.info "state: #{state}, state_q: #{state_q}"
+              LOGGER.info 'FORWARD_AUTH state restored' unless state.to_s.empty?
               redirect full_uri_short + state_q
             else
-              halt 404, "AUTH_CODES not found: #{code}"
+              halt 404, 'AUTH code not found'
             end
           end
 

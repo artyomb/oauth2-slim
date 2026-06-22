@@ -1,5 +1,6 @@
 require 'yaml'
 require 'rack/utils'
+require_relative 'log_safety'
 
 USERS_YAML = ENV['USERS_YAML']
 USERS_SCOPE = ENV['AUTH_SCOPE']
@@ -17,7 +18,7 @@ module UsersAuth
 
           YAML.safe_load(File.read(users_yaml_path), permitted_classes: [], aliases: false) || {}
         rescue => e
-          LOGGER.error "Cannot load USERS_YAML=#{users_yaml_path}: #{e.class}: #{e.message}"
+          LOGGER.error "Cannot load USERS_YAML=#{users_yaml_path}: #{LogSafety.exception_message(e)}"
           {}
         end
 

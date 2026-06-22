@@ -2,6 +2,10 @@
 # require_relative 'src/server'
 ENV['TZ'] = 'UTC'
 
+require_relative 'auth/log_safety'
+require 'stack-service-base'
+LogSafety.install_stack_service_base_header_logger
+
 require 'sinatra'
 require 'slim'
 require 'rack/sassc'
@@ -10,7 +14,6 @@ require_relative 'auth/auth20'
 require_relative 'auth/auth_forward'
 require_relative 'auth/openid_connect'
 
-require 'stack-service-base'
 StackServiceBase.rack_setup self
 
 enable :sessions
@@ -36,9 +39,10 @@ end
 disable :show_exceptions unless ENV['DEBUG']
 error do
   status 500
-  $stderr.puts "Exception: #{env['sinatra.error']}"
-  $stderr.puts "Exception backtrace: #{env['sinatra.error'].backtrace[0..10].join("\n")}"
-  { error: "Internal server error", message: env['sinatra.error'].message, backtrace: env['sinatra.error'].backtrace[0..10] }.to_json
+  error = env['sinatra.error']
+  LOGGER.error "Unhandled exception: #{LogSafety.exception_message(error)}"
+  LOGGER.debug "Unhandled exception backtrace: #{error.backtrace&.first(10)&.join("\n")}" if ENV['DEBUG']
+  { error: 'Internal server error' }.to_json
 end
 
 run Sinatra::Application

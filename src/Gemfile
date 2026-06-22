@@ -31,3 +31,8 @@ gem 'stack-service-base'
 group :development do
   gem 'rubocop'
 end
+
+group :test do
+  gem 'rspec'
+  gem 'simplecov'
+end

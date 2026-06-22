@@ -1,5 +1,6 @@
 require 'base64'
 require_relative 'domain_payload.rb'
+require_relative 'log_safety'
 
 AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
 AUTH_SCOPE = ENV['AUTH_SCOPE']
@@ -36,8 +37,7 @@ module SignatureAuth
         authorization_code = SecureRandom.hex(16)
         clear_codes
         AUTH_CODES[authorization_code] = { scope:, time: Time.now.to_i, login: decoded['login']}
-        LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
-        LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}#{state_q}"
+        LOGGER.info "Authorization code issued by existing token login=#{LogSafety.redact_text(decoded['login']).inspect}"
 
         redirect "#{redirect_uri}?code=#{authorization_code}#{state_q}"
       end
@@ -54,11 +54,11 @@ module SignatureAuth
         t3 = verify_key.verify(sig, message) rescue false
 
         if t1 && t2 && t3
-          LOGGER.info "Slim auth LOGIN Successful: #{message}"
+          safe_login = LogSafety.redact_text(login).inspect
+          safe_scope = LogSafety.redact_text(scope).inspect
+          LOGGER.info "Slim auth login successful login=#{safe_login} scope=#{safe_scope}"
           authorization_code = SecureRandom.hex(16)
           AUTH_CODES[authorization_code] = { scope:, time: time.to_i, login: }
-          LOGGER.info "AUTH_CODES[#{authorization_code}]: #{AUTH_CODES[authorization_code]}"
-          LOGGER.info "REDIRECT TO: #{redirect_uri}?code=#{authorization_code}#{state_q}"
 
           if params[:redirect] == 'do'
             redirect "#{redirect_uri}?code=#{authorization_code}#{state_q}"
@@ -68,7 +68,7 @@ module SignatureAuth
             slim :signature_auth, locals: { redirect_uri:, state:, scope:, bot_payload:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: 'do' }, layout: false
           end
         else
-          LOGGER.info "Slim auth LOGIN failed: #{message}\n t1: #{t1}, t2: #{t2}, t3:#{t3}\n in_scope: #{scope2}, true_scope: #{scope}\n delta t: #{Time.now.to_i - time.to_i}"
+          LOGGER.info "Slim auth login failed scope_match=#{t1} fresh=#{t2} signature_valid=#{t3}"
           slim :signature_auth, locals: { redirect_uri:, state:, scope:, bot_payload:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }, layout: false
         end
       else

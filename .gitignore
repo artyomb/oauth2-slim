@@ -2,5 +2,9 @@
 /dev/
 *.css.map
 forward_auth.rb
+src/coverage/
+src/signing_key
+src/auth_bot/.secrets
+src/auth_bot/users.txt
 AGENTS.md
 **/.knowledge/

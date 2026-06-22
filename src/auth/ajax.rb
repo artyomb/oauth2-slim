@@ -1,8 +1,10 @@
+require_relative 'log_safety'
+
 module Ajax
   module Helpers
     class AJAX_Error < StandardError
       def initialize(e, response)
-        $stderr.puts "Error: #{e.message}\n#{e.backtrace.join("\n")}"
+        LOGGER.error "AJAX error: #{LogSafety.exception_message(e)}" if defined?(LOGGER)
         @response = response
       end
       def to_json; @response.to_json end
@@ -29,7 +31,8 @@ module Ajax
           rescue AJAX_Error => e
             halt 403, e.to_json
           rescue => e
-            halt 502, { result: 'failed', error: e, backtrace: e.backtrace }.to_json
+            LOGGER.error "AJAX request failed: #{LogSafety.exception_message(e)}" if defined?(LOGGER)
+            halt 502, { result: 'failed', error: 'Internal server error' }.to_json
           end
         end
 

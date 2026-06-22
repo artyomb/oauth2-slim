@@ -1,6 +1,7 @@
 require 'sequel'
 require 'uri'
 require 'json'
+require_relative 'log_safety'
 
 USERS_DB_URL = ENV['USERS_DB_URL']
 USERS_SCOPE = ENV['AUTH_SCOPE']
@@ -56,7 +57,7 @@ module DBUserAuth
 
         def complete_admin_code_flow!(code)
           clear_codes
-          halt 404, "AUTH_CODES not found: #{code}" unless AUTH_CODES.key?(code)
+          halt 404, 'AUTH code not found' unless AUTH_CODES.key?(code)
 
           attributes = AUTH_CODES[code].slice(:scope, *TOKEN_USER_FIELDS)
           attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
@@ -118,7 +119,7 @@ module DBUserAuth
 
           OAuthUser.select(:id, *USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password = crypt(?, password)', password.to_s)).first
         rescue => e
-          LOGGER.error "Cannot fetch DB user login=#{login}: #{e.class}: #{e.message}"
+          LOGGER.error "Cannot fetch DB user login=#{login}: #{LogSafety.exception_message(e)}"
           nil
         end
 
@@ -160,8 +161,8 @@ module DBUserAuth
         def with_db_error(message)
           yield
         rescue Sequel::DatabaseError => e
-          LOGGER.error "#{message}: #{e.class}: #{e.message}"
-          respond_admin_error(e.message)
+          LOGGER.error "#{message}: #{LogSafety.exception_message(e)}"
+          respond_admin_error('Database operation failed')
         end
 
         def admin_db_action(message)

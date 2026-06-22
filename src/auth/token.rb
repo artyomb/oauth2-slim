@@ -1,3 +1,5 @@
+require_relative 'log_safety'
+
 KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
 system 'mkdir -p /private_keys' if ENV['RACK_ENV'] == 'production'
 
@@ -49,7 +51,7 @@ module Token
     # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
     access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
     response.set_cookie(COOKIE_TOKEN_NAME, value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
-    LOGGER.debug "New token: #{data}"
+    LOGGER.debug 'New token issued'
     access_token
   end
 
@@ -65,15 +67,15 @@ module Token
 
     # return false unless decoded['iss'] == FORWARD_OAUTH_AUTH_URL
     unless decoded['exp'].to_i > Time.now.to_i
-      LOGGER.debug "token expired: #{decoded}"
+      LOGGER.debug 'token expired'
       return false
     end
 
     headers['X-Token'] = decoded.to_json
-    LOGGER.debug "token valid: #{decoded}"
+    LOGGER.debug 'token valid'
     true
   rescue => e
-    LOGGER.debug "token invalid: #{e.message}"
+    LOGGER.debug "token invalid: #{LogSafety.exception_message(e)}"
     false
   end
 end
