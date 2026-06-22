@@ -7,9 +7,18 @@ USERS_DB_URL = ENV['USERS_DB_URL']
 USERS_SCOPE = ENV['AUTH_SCOPE']
 FORWARD_OAUTH_AUTH_URL = ENV.fetch('FORWARD_OAUTH_AUTH_URL')
 DB_USER_ADMIN_PATH = ENV.fetch('DB_USER_ADMIN_PATH', '/admin/users')
-DB_USER_SEED = ENV.fetch('DB_USER_SEED', 'true')
+DB_USER_SEED = ENV.fetch('DB_USER_SEED', 'false') == 'true'
+DB_USER_SEED_LOGIN = ENV.fetch('DB_USER_SEED_LOGIN', 'admin')
+DB_USER_SEED_PASSWORD = ENV['DB_USER_SEED_PASSWORD']
+DB_PASSWORD_COST = Integer(ENV.fetch('DB_PASSWORD_COST', '12'))
+BCRYPT_MAX_PASSWORD_BYTES = 72
 USER_FIELDS = %i[login name role org email].freeze
 TOKEN_USER_FIELDS = %i[uid login name role org email].freeze
+
+raise 'DB_PASSWORD_COST must be between 10 and 31' unless (10..31).cover?(DB_PASSWORD_COST)
+raise 'DB_USER_SEED_LOGIN is required when DB_USER_SEED=true' if DB_USER_SEED && DB_USER_SEED_LOGIN.to_s.empty?
+raise 'DB_USER_SEED_PASSWORD is required when DB_USER_SEED=true' if DB_USER_SEED && DB_USER_SEED_PASSWORD.to_s.empty?
+raise "DB_USER_SEED_PASSWORD is too long; maximum is #{BCRYPT_MAX_PASSWORD_BYTES} bytes" if DB_USER_SEED && DB_USER_SEED_PASSWORD.to_s.bytesize > BCRYPT_MAX_PASSWORD_BYTES
 
 DB = Sequel.connect(USERS_DB_URL)
 DB.extension :connection_validator
@@ -18,7 +27,7 @@ DB.run 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
 DB.create_table? :oauth_users do
   primary_key :id
   String :login, unique: true, null: false
-  String :password, null: false
+  String :password_hash, null: false
   String :name, null: true
   String :role, null: true
   String :org, null: true
@@ -27,13 +36,22 @@ DB.create_table? :oauth_users do
   DateTime :updated_at, null: false, default: Sequel.lit('NOW()')
   DateTime :deleted_at, null: true
 end
+
+oauth_user_columns = DB.schema(:oauth_users).map(&:first)
+if oauth_user_columns.include?(:password) && !oauth_user_columns.include?(:password_hash)
+  DB.alter_table(:oauth_users) do
+    rename_column :password, :password_hash
+  end
+end
+
 class OAuthUser < Sequel::Model(:oauth_users)
   plugin :validation_helpers
   plugin :timestamps, create: :created_at, update: :updated_at, update_on_create: true
 end
 
 if DB_USER_SEED
-  OAuthUser.insert( login: 'admin', password: Sequel.lit("crypt(?, gen_salt('bf'))", 'admin'), name: 'admin', role: 'admin', email: 'admin@local.net') unless OAuthUser.where(login: 'admin').count.positive?
+  seed_hash = Sequel.lit("crypt(?, gen_salt('bf', ?))", DB_USER_SEED_PASSWORD, DB_PASSWORD_COST)
+  OAuthUser.insert(login: DB_USER_SEED_LOGIN, password_hash: seed_hash, name: DB_USER_SEED_LOGIN, role: 'admin', email: "#{DB_USER_SEED_LOGIN}@local.net") unless OAuthUser.where(login: DB_USER_SEED_LOGIN).count.positive?
 end
 
 module DBUserAuth
@@ -110,14 +128,23 @@ module DBUserAuth
           keys.to_h { |key| [key, params[key].to_s.strip] }
         end
 
+        def password_too_long?(value)
+          value.to_s.bytesize > BCRYPT_MAX_PASSWORD_BYTES
+        end
+
+        def validate_password!(value)
+          admin_error!("password is too long; maximum is #{BCRYPT_MAX_PASSWORD_BYTES} bytes", status: 400) if password_too_long?(value)
+        end
+
         def password_hash(value)
-          Sequel.lit("crypt(?, gen_salt('bf'))", value.to_s)
+          Sequel.lit("crypt(?, gen_salt('bf', ?))", value.to_s, DB_PASSWORD_COST)
         end
 
         def db_user(login, password)
           return nil if [USERS_DB_URL, login, password].any? { |value| value.to_s.empty? }
+          return nil if password_too_long?(password)
 
-          OAuthUser.select(:id, *USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password = crypt(?, password)', password.to_s)).first
+          OAuthUser.select(:id, *USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password_hash = crypt(?, password_hash)', password.to_s)).first
         rescue => e
           LOGGER.error "Cannot fetch DB user login=#{login}: #{LogSafety.exception_message(e)}"
           nil
@@ -212,9 +239,10 @@ module DBUserAuth
           attrs = { **user_params(:login, :name, :role, :org, :email), password: params[:password].to_s }
           admin_error!('login is required', status: 400) if attrs[:login].empty?
           admin_error!('password is required', status: 400) if attrs[:password].empty?
+          validate_password!(attrs[:password])
           admin_error!("User already exists: #{attrs[:login]}", status: 409) if OAuthUser.where(login: attrs[:login]).count.positive?
 
-          OAuthUser.insert({ **attrs.slice(:login, :name, :role, :org, :email), password: password_hash(attrs[:password]) })
+          OAuthUser.insert({ **attrs.slice(:login, :name, :role, :org, :email), password_hash: password_hash(attrs[:password]) })
           respond_admin_success("User #{attrs[:login]} created")
         end
       end
@@ -231,7 +259,8 @@ module DBUserAuth
         admin_db_action("Cannot update DB user password login=#{login}") do
           require_user!(login)
           admin_error!('password is required', status: 400) if params[:password].to_s.empty?
-          OAuthUser.where(login: login.to_s).update(password: password_hash(params[:password]))
+          validate_password!(params[:password])
+          OAuthUser.where(login: login.to_s).update(password_hash: password_hash(params[:password]))
           respond_admin_success("Password updated for #{login}")
         end
       end
