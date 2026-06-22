@@ -110,10 +110,12 @@ module Auth20
         raise 'Invalid code' if code.to_s.empty?
         raise "Code not found: #{code}" unless AUTH_CODES.key? code
 
-        attributes = AUTH_CODES[code].slice(:scope, :login, :name, :role, :org, :email)
+        attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
         AUTH_CODES.delete code
 
         attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
+        subject = attributes[:uid] || attributes[:login]
+        attributes[:sub] ||= subject.to_s unless subject.to_s.empty?
         access_token = generate_token attributes
         content_type :json
         {
@@ -134,8 +136,9 @@ module Auth20
 
         content_type :json
         # OR Content-Type: application/jwt
+        subject = access_token['sub'] || access_token['uid'] || access_token['login']
         response = {
-          # sub: "admin",
+          sub: subject.to_s,
           # id: 'admin',
           admin: 'admin', # for fixed used
           login: access_token['login'],  # for grafana?

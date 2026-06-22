@@ -1,3 +1,6 @@
+require 'base64'
+require_relative 'domain_payload.rb'
+
 AUTH_VERIFY_KEY = ENV['AUTH_VERIFY_KEY']
 AUTH_SCOPE = ENV['AUTH_SCOPE']
 AUTH_BOT = ENV['AUTH_BOT']
@@ -6,6 +9,12 @@ FORWARD_OAUTH_AUTH_URL = ENV['FORWARD_OAUTH_AUTH_URL']
 module SignatureAuth
   def self.included(base)
     base.class_eval do
+    def bot_auth_scope_and_payload(scope)
+      payload = DomainPayload.encode(scope)
+      [DomainPayload.decode(payload), payload]
+    rescue ArgumentError
+      [scope, Base64.urlsafe_encode64(scope.to_s, padding: false)]
+    end
 
     get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
       token = get_token
@@ -17,6 +26,7 @@ module SignatureAuth
       state_q = state.to_s == '' ? '' : "&state=#{state}"
 
       scope = AUTH_SCOPE || uri_host || request.env['HTTP_HOST']
+      scope, bot_payload = bot_auth_scope_and_payload(scope) if AUTH_BOT
 
       signature = params[:signature]
 
@@ -55,14 +65,14 @@ module SignatureAuth
           else
             # SSO Session cookie WJT
             generate_token scope:, login:, sso: true
-            slim :signature_auth, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: 'do' }, layout: false
+            slim :signature_auth, locals: { redirect_uri:, state:, scope:, bot_payload:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: 'do' }, layout: false
           end
         else
           LOGGER.info "Slim auth LOGIN failed: #{message}\n t1: #{t1}, t2: #{t2}, t3:#{t3}\n in_scope: #{scope2}, true_scope: #{scope}\n delta t: #{Time.now.to_i - time.to_i}"
-          slim :signature_auth, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }, layout: false
+          slim :signature_auth, locals: { redirect_uri:, state:, scope:, bot_payload:, auth_bot: AUTH_BOT, error: 'Invalid authorization' }, layout: false
         end
       else
-        slim :signature_auth, locals: { redirect_uri:, state:, scope:, auth_bot: AUTH_BOT, error: nil }, layout: false
+        slim :signature_auth, locals: { redirect_uri:, state:, scope:, bot_payload:, auth_bot: AUTH_BOT, error: nil }, layout: false
       end
     end
     end
