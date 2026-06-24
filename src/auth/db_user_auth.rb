@@ -20,6 +20,7 @@ raise 'DB_USER_SEED_LOGIN is required when DB_USER_SEED=true' if DB_USER_SEED &&
 raise 'DB_USER_SEED_PASSWORD is required when DB_USER_SEED=true' if DB_USER_SEED && DB_USER_SEED_PASSWORD.to_s.empty?
 raise "DB_USER_SEED_PASSWORD is too long; maximum is #{BCRYPT_MAX_PASSWORD_BYTES} bytes" if DB_USER_SEED && DB_USER_SEED_PASSWORD.to_s.bytesize > BCRYPT_MAX_PASSWORD_BYTES
 
+ENV['PGCLIENTENCODING'] ||= 'UTF8'
 DB = Sequel.connect(USERS_DB_URL)
 DB.extension :connection_validator
 DB.pool.connection_validation_timeout = ENV.fetch('DB_CONNECTION_VALIDATION_TIMEOUT', '60').to_i
@@ -107,8 +108,16 @@ module DBUserAuth
           respond_admin_error(message, status:)
         end
 
+        def user_text(value)
+          value.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace)
+        end
+
+        def optional_user_text(value)
+          value.nil? ? nil : user_text(value)
+        end
+
         def user_row_attributes(record)
-          USER_FIELDS.each_with_object({}) { |field, attrs| attrs[field] = record[field].to_s }
+          USER_FIELDS.each_with_object({}) { |field, attrs| attrs[field] = user_text(record[field]) }
         end
 
         def managed_users
@@ -125,7 +134,7 @@ module DBUserAuth
         end
 
         def user_params(*keys)
-          keys.to_h { |key| [key, params[key].to_s.strip] }
+          keys.to_h { |key| [key, user_text(params[key]).strip] }
         end
 
         def password_too_long?(value)
@@ -181,8 +190,15 @@ module DBUserAuth
         end
 
         def token_attributes(user, fallback_login: nil)
-          login = (user[:login] || fallback_login).to_s
-          { uid: user[:id], login:, name: user[:name], role: user[:role], org: user[:org], email: user[:email] || "#{login}@local.net" }.compact
+          login = user_text(user[:login] || fallback_login)
+          {
+            uid: user[:id],
+            login:,
+            name: optional_user_text(user[:name]),
+            role: optional_user_text(user[:role]),
+            org: optional_user_text(user[:org]),
+            email: optional_user_text(user[:email]) || "#{login}@local.net"
+          }.compact
         end
 
         def with_db_error(message)
