@@ -91,6 +91,7 @@ module AuthForward
           scope: 'openid profile email'
         }
         params[:state] = Base64.urlsafe_encode64(to_params) unless to_params.to_s.empty?
+        headers['X-Redirect-Reason'] = 'unauthorized'
         redirect "#{FORWARD_OAUTH_AUTH_URL}?#{URI.encode_www_form(params)}", 302
       end
 
