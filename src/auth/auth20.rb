@@ -81,7 +81,6 @@ module Auth20
         subject = access_token['sub'] || access_token['uid'] || access_token['login']
         {
           sub: subject.to_s,
-          admin: 'admin',
           login: access_token['login'],
           role: access_token['role'] || 'admin',
           name: access_token['name'],
