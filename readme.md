@@ -1,3 +1,12 @@
+# Traefik ForwardAuth
+
+- `GET /auth` is strict: a missing, invalid, expired, or revoked auth cookie starts authorization.
+- `GET /auth/optional` is for explicitly public routers: the same token is validated when present, but an unauthenticated request receives `200` without identity headers.
+- Both endpoints consume a returned `code`, issue the auth cookie, and redirect to the original URL without callback parameters.
+- Authenticated responses set `X-AuthSlim: authorized` and `X-Token`. Anonymous optional responses set neither header.
+
+Only attach `/auth/optional` to routes and HTTP methods that are intentionally accessible without authentication. The upstream application remains responsible for authorization of modifications and personalized responses.
+
 # OAuth 2.0 
 
 ### Authorization Request

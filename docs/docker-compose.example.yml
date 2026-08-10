@@ -30,6 +30,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.auth.forwardauth.address=http://oauth2-slim:7000/auth"
+      - "traefik.http.middlewares.auth.forwardauth.authResponseHeadersRegex=(?i)^X-(AuthSlim|Token)$"
+      # Use only on routers where anonymous access is allowed.
+      - "traefik.http.middlewares.auth-optional.forwardauth.address=http://oauth2-slim:7000/auth/optional"
+      - "traefik.http.middlewares.auth-optional.forwardauth.authResponseHeadersRegex=(?i)^X-(AuthSlim|Token)$"
       # - "traefik.http.middlewares.auth.forwardauth.addAuthCookiesToResponse=auth_token"
 
 

@@ -29,6 +29,13 @@ end
 RSpec.describe TelegramAuth do
   let(:request) { Rack::MockRequest.new(TelegramAuthSpecApp) }
 
+  around do |example|
+    revoked = FORWARD_AUTH[:revoked?]
+    example.run
+  ensure
+    FORWARD_AUTH[:revoked?] = revoked
+  end
+
   before do
     AUTH_CODES.clear
     TelegramAuth::AUTH_DB.fetch = []
@@ -143,6 +150,83 @@ RSpec.describe TelegramAuth do
     expect(replay.status).to eq(404)
   end
 
+  describe "GET /auth/optional" do
+    it "allows an anonymous request without identity headers or an auth cookie" do
+      response = optional_auth_request(
+        headers: {
+          "HTTP_X_AUTHSLIM" => "authorized",
+          "HTTP_X_TOKEN" => { login: "forged", role: "admin" }.to_json
+        }
+      )
+
+      expect(response.status).to eq(200)
+      expect(response["location"]).to be_nil
+      expect(response["X-AuthSlim"]).to be_nil
+      expect(response["X-Token"]).to be_nil
+      expect(auth_cookie?(response)).to be(false)
+    end
+
+    it "forwards server-owned identity headers for a valid token" do
+      token = signed_token(login: "alice", role: "editor")
+      response = optional_auth_request(
+        token:,
+        headers: { "HTTP_X_TOKEN" => { login: "forged", role: "admin" }.to_json }
+      )
+
+      expect(response.status).to eq(200)
+      expect(response["X-AuthSlim"]).to eq("authorized")
+      expect(JSON.parse(response["X-Token"])).to include("login" => "alice", "role" => "editor")
+    end
+
+    it "treats invalid and expired tokens as anonymous" do
+      ["not-a-jwt", signed_token(exp: Time.now.to_i - 1)].each do |token|
+        response = optional_auth_request(token:)
+
+        expect(response.status).to eq(200)
+        expect(response["X-AuthSlim"]).to be_nil
+        expect(response["X-Token"]).to be_nil
+      end
+    end
+
+    it "treats a revoked token as anonymous" do
+      FORWARD_AUTH[:revoked?] = -> { true }
+      response = optional_auth_request(token: signed_token)
+
+      expect(response.status).to eq(200)
+      expect(response["X-AuthSlim"]).to be_nil
+      expect(response["X-Token"]).to be_nil
+    end
+
+    it "completes an authorization callback before accepting an existing token" do
+      code = "optional-auth-code"
+      AUTH_CODES[code] = {
+        scope: "app.test",
+        time: Time.now.to_i,
+        uid: 84,
+        login: "bob",
+        role: "admin",
+        email: "bob@example.test"
+      }
+      state = Base64.urlsafe_encode64("page=2")
+      forwarded_uri = "/news?#{URI.encode_www_form(code:, state:)}"
+
+      response = optional_auth_request(token: signed_token(login: "alice"), forwarded_uri:)
+
+      expect(response.status).to eq(302)
+      expect(response["location"]).to eq("https://app.test/news?page=2")
+      expect(AUTH_CODES).not_to have_key(code)
+      token_payload = JWT.decode(auth_cookie_value(response), SIGNING_KEY.verify_key, true, algorithm: "EdDSA").first
+      expect(token_payload).to include("uid" => 84, "login" => "bob", "role" => "admin")
+    end
+
+    it "rejects an unknown authorization code instead of allowing anonymous access" do
+      response = optional_auth_request(forwarded_uri: "/news?code=missing")
+
+      expect(response.status).to eq(404)
+      expect(response.body).to eq("AUTH code not found")
+    end
+  end
+
   it "rejects a linked account without a login" do
     TelegramAuth::AUTH_DB.fetch = [{ id: 42 }]
 
@@ -157,6 +241,22 @@ RSpec.describe TelegramAuth do
 
   def auth_cookie?(response)
     !auth_cookie_value(response).nil?
+  end
+
+  def optional_auth_request(token: nil, forwarded_uri: "/news", headers: {})
+    env = {
+      "HTTP_HOST" => "auth.test",
+      "HTTP_X_FORWARDED_PROTO" => "https",
+      "HTTP_X_FORWARDED_HOST" => "app.test",
+      "HTTP_X_FORWARDED_URI" => forwarded_uri,
+      **headers
+    }
+    env["HTTP_COOKIE"] = "#{COOKIE_TOKEN_NAME}=#{token}" if token
+    request.get("/auth/optional", env)
+  end
+
+  def signed_token(login: "alice", role: "viewer", exp: Time.now.to_i + 3600)
+    JWT.encode({ login:, role:, exp:, iat: Time.now.to_i }, SIGNING_KEY, "EdDSA")
   end
 
   def auth_cookie_value(response)

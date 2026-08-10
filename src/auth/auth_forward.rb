@@ -46,6 +46,8 @@ def revoked?(&block)
 end
 
 module AuthForward
+  OWNED_IDENTITY_HEADERS = %w[x-authslim x-token].freeze
+
   require_relative '../custom/forward_auth.rb' if File.exist?("#{__dir__}/../custom/forward_auth.rb")
 
   def self.included(base)
@@ -130,9 +132,65 @@ module AuthForward
 
           header_name = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
           next if %w[Connection Keep-Alive Proxy-Authenticate Proxy-Authorization Te Trailer Transfer-Encoding Upgrade].include?(header_name)
+          next if OWNED_IDENTITY_HEADERS.include?(header_name.downcase)
 
           headers[header_name] = value
         end
+      end
+
+      def forward_auth_params
+        raw_uri = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI'] || ''
+        query = raw_uri.split('?', 2)[1].to_s
+        Rack::Utils.parse_nested_query(query)
+      end
+
+      def complete_forward_auth(code, x_params)
+        LOGGER.info 'FORWARD_AUTH code received'
+        clear_codes
+        halt 404, 'AUTH code not found' unless AUTH_CODES.key? code
+
+        attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
+        attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
+        generate_token attributes
+        AUTH_CODES.delete code
+
+        proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.env['rack.url_scheme']
+        host = request.env['HTTP_X_FORWARDED_HOST'] || request.env['HTTP_HOST']
+        path = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI']
+        full_uri_short = "#{proto}://#{host}#{path}".split('?').first
+        state = x_params['state'].to_s
+        state_q = state.empty? ? '' : "?#{Base64.urlsafe_decode64 state}"
+        LOGGER.info 'FORWARD_AUTH state restored' unless state.empty?
+        redirect full_uri_short + state_q
+      end
+
+      def handle_forward_auth_request(optional:)
+        x_params = forward_auth_params
+        LOGGER.debug "Forward auth query received: #{LogSafety.redact_hash(x_params)}"
+
+        return complete_forward_auth(x_params['code'], x_params) if x_params.key? 'code'
+
+        authenticated = valid_token?
+        authenticated &&= !FORWARD_AUTH[:revoked?].call
+        if authenticated
+          LOGGER.info 'AUTH TOKEN VALID'
+          forward_incoming_headers
+          headers['X-AuthSlim'] = 'authorized'
+          return status 200
+        end
+
+        headers.delete 'X-Token'
+        if optional
+          LOGGER.info 'Optional forward auth allowed anonymous request'
+          forward_incoming_headers
+          headers.delete 'X-AuthSlim'
+          return status 200
+        end
+
+        instance_exec &FORWARD_AUTH[:method]
+        forward_incoming_headers
+        headers['X-AuthSlim'] = 'authorized'
+        LOGGER.info 'Authorization successful'
       end
 
       def logout
@@ -149,50 +207,8 @@ module AuthForward
         "#{proto}://#{host}"
       end
 
-      get '/auth' do
-        # force ?code= detect even token is valid ...
-        raw_uri = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI'] || ''
-        query = raw_uri.split('?', 2)[1].to_s
-        x_params = Rack::Utils.parse_nested_query(query)
-        LOGGER.debug "Forward auth query received: #{LogSafety.redact_hash(x_params)}"
-
-        if valid_token? && !FORWARD_AUTH[:revoked?].call && !x_params['code']
-          LOGGER.info 'AUTH TOKEN VALID'
-          forward_incoming_headers
-          headers['X-AuthSlim'] = 'authorized'
-          status 200
-        else
-          code = x_params['code']
-          if code
-            LOGGER.info 'FORWARD_AUTH code received'
-            clear_codes
-            if AUTH_CODES.key? code
-              attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
-              attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
-              generate_token attributes
-
-              AUTH_CODES.delete code
-              proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.env['rack.url_scheme']
-              host = request.env['HTTP_X_FORWARDED_HOST'] || request.env['HTTP_HOST']
-              path = request.env['HTTP_X_FORWARDED_URI'] || request.env['REQUEST_URI']
-              full_uri = "#{proto}://#{host}#{path}"
-              full_uri_short = full_uri.split('?').first
-
-              state = x_params['state'] || ''
-              state_q = state.to_s == '' ? '' : "?#{Base64.urlsafe_decode64 state}"
-              LOGGER.info 'FORWARD_AUTH state restored' unless state.to_s.empty?
-              redirect full_uri_short + state_q
-            else
-              halt 404, 'AUTH code not found'
-            end
-          end
-
-          instance_exec &FORWARD_AUTH[:method]
-          forward_incoming_headers
-          headers['X-AuthSlim'] = 'authorized'
-          LOGGER.info 'Authorization successful'
-        end
-      end
+      get('/auth') { handle_forward_auth_request(optional: false) }
+      get('/auth/optional') { handle_forward_auth_request(optional: true) }
 
       get %r{.*/logout} do
         logout
