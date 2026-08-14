@@ -1,3 +1,6 @@
+require 'ed25519'
+require 'jwt'
+require 'jwt/eddsa'
 require_relative 'log_safety'
 
 KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"

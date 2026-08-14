@@ -15,8 +15,9 @@ GET /oauth2/authorize?
   response_type=code&
   client_id=abc123&
   redirect_uri=https://yourapp.com/callback&
-  scope=read_profile email&
-  state=xyz123
+  scope=openid email&
+  state=xyz123&
+  nonce=random-client-value
 ```
 
 ### Token Request
@@ -31,6 +32,22 @@ client_id=abc123&
 client_secret=supersecret&
 code_verifier=d1f2e3g4h5i6j7k8l9
 ```
+
+When the requested scope contains `openid`, the token response includes an
+HS256-signed `id_token`. Configure the provider and relying party with the same
+`OIDC_CLIENT_SECRET`. The authorization strategy preserves `nonce` unchanged
+from the authorization request to the ID token.
+
+```yaml
+OIDC_CLIENT_SECRET: '<shared OIDC signing secret>'
+OIDC_ISSUER: 'https://auth.example.com'
+OIDC_ID_TOKEN_TTL: '3600'
+```
+
+`OIDC_ISSUER` defaults to `FORWARD_OAUTH_AUTH_URL`. `OIDC_ID_TOKEN_TTL` defaults
+to 3600 seconds. Registered-client validation is not implemented yet; the
+configured secret currently signs ID tokens but is not used to authenticate
+the token request.
 
 # Client configuration example
 Grafana docker image configuration example using environment variables

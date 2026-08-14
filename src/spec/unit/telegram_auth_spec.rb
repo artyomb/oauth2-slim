@@ -92,9 +92,12 @@ RSpec.describe TelegramAuth do
     original_query = "page=2&filter=active"
     state = Base64.urlsafe_encode64(original_query)
     redirect_uri = "https://app.test/private?existing=kept#details"
+    nonce = "telegram-oidc-nonce"
+    client_id = "telegram-client"
+    requested_scope = "openid email"
 
     authorize = request.get(
-      "/authorize?#{URI.encode_www_form(redirect_uri:, state:)}",
+      "/authorize?#{URI.encode_www_form(redirect_uri:, state:, nonce:, client_id:, scope: requested_scope, response_type: 'code')}",
       "HTTP_HOST" => "auth.test"
     )
 
@@ -109,6 +112,10 @@ RSpec.describe TelegramAuth do
     issued = AUTH_CODES.fetch(authorization_code)
     expect(issued).to include(
       scope: "app.test",
+      requested_scope:,
+      client_id:,
+      redirect_uri:,
+      nonce:,
       uid: 42,
       login: "alice",
       name: "Alice",
@@ -117,7 +124,10 @@ RSpec.describe TelegramAuth do
       email: "alice@example.test"
     )
     expect(issued[:time]).to be_within(2).of(Time.now.to_i)
-    expect(issued.keys).to contain_exactly(:scope, :time, :uid, :login, :name, :role, :org, :email)
+    expect(issued.keys).to contain_exactly(
+      :scope, :requested_scope, :client_id, :redirect_uri, :nonce, :time,
+      :uid, :login, :name, :role, :org, :email
+    )
     forwarded_callback_uri = location.request_uri
 
     callback = request.get(

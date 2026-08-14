@@ -10,7 +10,7 @@ module LogSafety
     /secret/,
     /token/,
     /\Acode\z/,
-    /\Astate\z/,
+    /\A(?:state|nonce)\z/,
     /signing.*key|private.*key|\Akey\z/
   ].freeze
 
@@ -48,7 +48,7 @@ module LogSafety
 
     def redact_text(value)
       text = value.to_s.dup
-      text.gsub!(/((?:access_token|refresh_token|id_token|client_secret|password|token|secret|code|state)=)[^&\s]+/i, "\\1#{REDACTED}")
+      text.gsub!(/((?:access_token|refresh_token|id_token|client_secret|password|token|secret|code|state|nonce)=)[^&\s]+/i, "\\1#{REDACTED}")
       text.gsub!(/(Bearer\s+)[A-Za-z0-9._~+\/=-]+/i, "\\1#{REDACTED}")
       text.gsub!(/((?:Authorization|Cookie|Set-Cookie):\s*)[^\n]+/i, "\\1#{REDACTED}")
       text

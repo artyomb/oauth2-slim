@@ -68,26 +68,15 @@ module UsersAuth
         end
 
         def users_auth_context
-          redirect_uri = params[:redirect_uri]
-          uri_host = valid_redirect_uri!(redirect_uri).host
-          state = params[:state]
-          scope = USERS_SCOPE || uri_host || request.env['HTTP_HOST']
-          { redirect_uri:, state:, scope: }
-        end
-
-        def state_query(state)
-          state.to_s == '' ? '' : "&state=#{state}"
-        end
-
-        def issue_auth_code(scope, redirect_uri, state, attributes)
-          authorization_code = SecureRandom.hex(16)
-          clear_codes
-          AUTH_CODES[authorization_code] = { scope:, time: Time.now.to_i, **attributes }.compact
-          redirect "#{redirect_uri}?code=#{authorization_code}#{state_query(state)}"
+          context = authorization_request_context
+          redirect_uri = valid_redirect_uri!(context[:redirect_uri])
+          auth_scope = USERS_SCOPE || redirect_uri.host || request.env['HTTP_HOST']
+          context.merge(redirect_uri: redirect_uri.to_s, auth_scope:)
         end
 
         def render_users_auth(context, error: nil)
-          slim :users_auth, locals: context.merge(error:)#, layout: false
+          authorization_fields = authorization_form_fields(context)
+          slim :users_auth, locals: context.merge(authorization_fields:, error:)#, layout: false
         end
       end
 
@@ -97,17 +86,10 @@ module UsersAuth
 
         if valid_token?(token)
           decoded = decode_token(token)
-          issue_auth_code(
-            context[:scope],
-            context[:redirect_uri],
-            context[:state],
-            {
-            login: decoded['login'],
-            name: decoded['name'],
-            role: decoded['role'],
-            org: decoded['org'],
-            email: decoded['email']
-            }
+          redirect_with_authorization_code(
+            auth_scope: context[:auth_scope],
+            context:,
+            identity: authorization_code_identity(decoded.transform_keys(&:to_sym))
           )
         end
 
@@ -121,7 +103,9 @@ module UsersAuth
         password = params[:password].to_s
         attributes = authorize_password(login, password)
         if attributes
-          issue_auth_code(context[:scope], context[:redirect_uri], context[:state], attributes)
+          redirect_with_authorization_code(
+            auth_scope: context[:auth_scope], context:, identity: attributes
+          )
         end
 
         render_users_auth(context, error: 'Invalid login/password or user disabled')

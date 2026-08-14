@@ -36,11 +36,12 @@ RSpec.describe LogSafety do
   describe ".redact_url" do
     it "redacts sensitive URL query values including nested URL values" do
       redacted = described_class.redact_url(
-        "https://auth.test/callback?code=abc&state=xyz&scope=openid&client_secret=top&redirect_uri=https%3A%2F%2Fapp.test%2Fcb%3Fcode%3Dnested"
+        "https://auth.test/callback?code=abc&state=xyz&nonce=replay-value&scope=openid&client_secret=top&redirect_uri=https%3A%2F%2Fapp.test%2Fcb%3Fcode%3Dnested"
       )
 
       expect(redacted).not_to include("abc")
       expect(redacted).not_to include("xyz")
+      expect(redacted).not_to include("replay-value")
       expect(redacted).not_to include("top")
       expect(redacted).not_to include("nested")
       expect(redacted).to include("scope=openid")

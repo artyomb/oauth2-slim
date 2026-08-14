@@ -6,14 +6,11 @@ require 'digest'
 require 'ed25519'
 require 'faraday'
 require 'rack/utils'
+require_relative 'authorization_code'
 require_relative 'token'
 
 $stdout.sync=true
 FORWARD_AUTH = {}
-AUTH_CODES = {}
-def clear_codes
-  AUTH_CODES.delete_if { |k, v| v[:time] < Time.now.to_i - 30 }
-end
 
 # CUSTOM override forward auth method:
 #
@@ -52,7 +49,7 @@ module AuthForward
 
   def self.included(base)
     base.class_eval do
-      helpers Token
+      helpers Token, AuthorizationCode
 
       if ENV['USERS_DB_URL'].to_s != '' && FORWARD_AUTH[:method].nil?
         LOGGER.info 'DBUserAuth'
@@ -146,13 +143,12 @@ module AuthForward
 
       def complete_forward_auth(code, x_params)
         LOGGER.info 'FORWARD_AUTH code received'
-        clear_codes
-        halt 404, 'AUTH code not found' unless AUTH_CODES.key? code
+        grant = consume_authorization_code(code)
+        halt 404, 'AUTH code not found' unless grant
 
-        attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
+        attributes = authorization_code_identity(grant).merge(scope: grant[:scope])
         attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
         generate_token attributes
-        AUTH_CODES.delete code
 
         proto = request.env['HTTP_X_FORWARDED_PROTO'] || request.env['rack.url_scheme']
         host = request.env['HTTP_X_FORWARDED_HOST'] || request.env['HTTP_HOST']

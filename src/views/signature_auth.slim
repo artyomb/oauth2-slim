@@ -56,13 +56,13 @@ html
       -if auth_bot
         a.bot_link target="_blank" tabindex="-1" href=%[https://telegram.me/#{auth_bot}?start=#{bot_payload}] Slim Auth
       form method="get" action=""
-        input type="hidden" name="redirect_uri" value=redirect_uri
-        input type="hidden" name="state" value=state
+        - authorization_fields.each do |name, value|
+          input type="hidden" name=name value=value
         input type="hidden" name="redirect" value=locals[:redirect]
         -unless auth_bot
           .form-group
             label for="scope" Scope:
-            input#scope type="text" name="scope" value=scope  readonly=true
+            input#scope type="text" value=scope readonly=true
         .form-group
           label for="signature" Signature:
           input#signature name="signature" required=true value=locals[:signature] autofocus=true

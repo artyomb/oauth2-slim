@@ -21,15 +21,6 @@ module TelegramAuth
           AUTH_DB.fetch(AUTH_DB_QUERY, session[:auth_code]).all&.first
         end
 
-        def telegram_callback_uri(uri, authorization_code, state)
-          query = URI.decode_www_form(uri.query.to_s)
-          query.reject! { |key, _value| %w[code state].include?(key) }
-          query << ['code', authorization_code]
-          query << ['state', state] unless state.to_s.empty?
-          uri.query = URI.encode_www_form(query)
-          uri.to_s
-        end
-
         def telegram_token_attributes(account)
           values = account.to_h.transform_keys(&:to_sym)
           attributes = values.slice(*TOKEN_USER_FIELDS)
@@ -39,18 +30,10 @@ module TelegramAuth
           attributes.compact
         end
 
-        def issue_telegram_auth_code(account, scope, redirect_uri, state)
-          attributes = telegram_token_attributes(account)
-          authorization_code = SecureRandom.hex(16)
-          callback_uri = telegram_callback_uri(redirect_uri, authorization_code, state)
-          clear_codes
-          AUTH_CODES[authorization_code] = {
-            scope:,
-            time: Time.now.to_i,
-            **attributes
-          }.compact
+        def issue_telegram_auth_code(account, auth_scope, context)
+          identity = telegram_token_attributes(account)
           session.delete(:auth_code)
-          redirect callback_uri
+          redirect_with_authorization_code(identity:, auth_scope:, context:)
         end
       end
 
@@ -59,15 +42,15 @@ module TelegramAuth
       end
 
       get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
-        redirect_uri = valid_redirect_uri!(params[:redirect_uri])
-
-        state = params[:state]
-        scope = AUTH_SCOPE || redirect_uri.host || request.env['HTTP_HOST']
+        context = authorization_request_context
+        redirect_uri = valid_redirect_uri!(context[:redirect_uri])
+        context[:redirect_uri] = redirect_uri.to_s
+        auth_scope = AUTH_SCOPE || redirect_uri.host || request.env['HTTP_HOST']
 
         if (account = tg_account)
-          issue_telegram_auth_code(account, scope, redirect_uri, state)
+          issue_telegram_auth_code(account, auth_scope, context)
         else
-          slim :telegram_auth, locals: { redirect_uri: redirect_uri.to_s, state:, scope:,
+          slim :telegram_auth, locals: { redirect_uri: redirect_uri.to_s, state: context[:state], scope: auth_scope,
                                          auth_bot: TELEGRAM_AUTH_BOT, auth_code: session[:auth_code], error: nil }
 
         end

@@ -1,10 +1,11 @@
 require_relative 'ajax'
+require_relative 'authorization_code'
 require_relative 'log_safety'
 
 module Auth20
   def self.included(base)
     base.class_eval do
-      helpers Ajax::Helpers
+      helpers Ajax::Helpers, AuthorizationCode
 
       before do
         # unless request.path_info =~ /login|\/api|favicon/
@@ -39,6 +40,30 @@ module Auth20
           LOGGER.debug "Invalid userinfo token: #{e.class}"
           halt 401, 'Invalid token'
         end
+
+        def oidc_request?(grant)
+          grant[:requested_scope].to_s.split.include?('openid')
+        end
+
+        def oidc_id_token(grant, subject:, email:)
+          return unless oidc_request?(grant)
+
+          secret = ENV['OIDC_CLIENT_SECRET'].to_s
+          halt 500, 'OIDC_CLIENT_SECRET is required for OpenID Connect requests' if secret.empty?
+
+          now = Time.now.to_i
+          payload = {
+            iss: ENV['OIDC_ISSUER'] || ENV['FORWARD_OAUTH_AUTH_URL'],
+            sub: subject.to_s,
+            aud: grant[:client_id],
+            nonce: grant[:nonce],
+            email:,
+            iat: now,
+            exp: now + Integer(ENV.fetch('OIDC_ID_TOKEN_TTL', '3600'))
+          }.compact
+
+          JWT.encode(payload, secret, 'HS256')
+        end
       end
 
       post %r{.*/token_old} do
@@ -50,28 +75,29 @@ module Auth20
         code = params['code']
         halt 400, 'Invalid code' if code.to_s.empty?
 
-        unless AUTH_CODES.key? code
+        grant = consume_authorization_code(code)
+        unless grant
           LOGGER.warn 'OAuth token exchange failed: authorization code not found'
           halt 404, 'Authorization code not found'
         end
 
-        attributes = AUTH_CODES[code].slice(:scope, :uid, :login, :name, :role, :org, :email)
-        AUTH_CODES.delete code
-
+        attributes = authorization_code_identity(grant).merge(scope: grant[:scope])
         attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
         subject = attributes[:uid] || attributes[:login]
         attributes[:sub] ||= subject.to_s unless subject.to_s.empty?
         access_token = generate_token attributes
+        id_token = oidc_id_token(grant, subject:, email: attributes[:email])
         content_type :json
         {
           "access_token": access_token,
+          'id_token': id_token,
           'token_type': 'Bearer',
           "token_format": 'jwt',
           "token_algorithm": 'RS256',
           'expires_in': 3600,
           'refresh_token': 'refresh_token',
-          'scope': 'allowed_scopes'
-        }.to_json
+          'scope': grant[:requested_scope] || 'allowed_scopes'
+        }.compact.to_json
       end
 
       get %r{.*/user} do

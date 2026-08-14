@@ -125,8 +125,8 @@ sass:
       p.error = t('auth.invalid_credentials')
 
     form method="post" action=""
-      input type="hidden" name="redirect_uri" value=redirect_uri
-      input type="hidden" name="state" value=state
+      - authorization_fields.each do |name, value|
+        input type="hidden" name=name value=value
       .form-group
         label for="username" = t('auth.username_label')
         input.form-input#username type="text" name="username" required=true autofocus=true autocomplete="username"

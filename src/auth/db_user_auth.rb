@@ -75,13 +75,12 @@ module DBUserAuth
         end
 
         def complete_admin_code_flow!(code)
-          clear_codes
-          halt 404, 'AUTH code not found' unless AUTH_CODES.key?(code)
+          grant = consume_authorization_code(code)
+          halt 404, 'AUTH code not found' unless grant
 
-          attributes = AUTH_CODES[code].slice(:scope, *TOKEN_USER_FIELDS)
+          attributes = authorization_code_identity(grant).merge(scope: grant[:scope])
           attributes[:email] ||= "#{attributes[:login]}@local.net" if attributes[:login]
           generate_token attributes
-          AUTH_CODES.delete code
           redirect admin_redirect_uri
         end
 
@@ -167,26 +166,15 @@ module DBUserAuth
         end
 
         def users_auth_context
-          redirect_uri = params[:redirect_uri]
-          uri_host = valid_redirect_uri!(redirect_uri).host
-          state = params[:state]
-          scope = USERS_SCOPE || uri_host || request.env['HTTP_HOST']
-          { redirect_uri:, state:, scope: }
-        end
-
-        def state_query(state)
-          state.to_s == '' ? '' : "&state=#{state}"
-        end
-
-        def issue_auth_code(scope, redirect_uri, state, attributes)
-          authorization_code = SecureRandom.hex(16)
-          clear_codes
-          AUTH_CODES[authorization_code] = { scope:, time: Time.now.to_i, **attributes }.compact
-          redirect "#{redirect_uri}?code=#{authorization_code}#{state_query(state)}"
+          context = authorization_request_context
+          redirect_uri = valid_redirect_uri!(context[:redirect_uri])
+          auth_scope = USERS_SCOPE || redirect_uri.host || request.env['HTTP_HOST']
+          context.merge(redirect_uri: redirect_uri.to_s, auth_scope:)
         end
 
         def render_users_auth(context, error: nil)
-          slim :users_auth, locals: context.merge(error:)
+          authorization_fields = authorization_form_fields(context)
+          slim :users_auth, locals: context.merge(authorization_fields:, error:)
         end
 
         def token_attributes(user, fallback_login: nil)
@@ -220,7 +208,11 @@ module DBUserAuth
         context = users_auth_context
         clear_legacy_tokens
 
-        issue_auth_code(context[:scope], context[:redirect_uri], context[:state], token_attributes(current_auth_user)) if valid_token?(token)
+        if valid_token?(token)
+          redirect_with_authorization_code(
+            auth_scope: context[:auth_scope], context:, identity: token_attributes(current_auth_user)
+          )
+        end
 
         render_users_auth(context)
       end
@@ -233,7 +225,9 @@ module DBUserAuth
         password = params[:password].to_s
         attributes = authorize_password(login, password)
         if attributes
-          issue_auth_code(context[:scope], context[:redirect_uri], context[:state], attributes)
+          redirect_with_authorization_code(
+            auth_scope: context[:auth_scope], context:, identity: attributes
+          )
         end
 
         render_users_auth(context, error: 'Invalid login/password or user disabled')
