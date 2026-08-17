@@ -42,26 +42,36 @@ module SignatureAuth
       if auth_scope && signature
         verify_key = Ed25519::VerifyKey.new [AUTH_VERIFY_KEY].pack('H*')
         signature_str = Zlib::Inflate.inflate Base64.urlsafe_decode64(signature) rescue ''
-        scope2, time, login, sig = signature_str.split '|'
-        message = "#{auth_scope}|#{time}|#{login}"
+        signature_fields = signature_str.split('|', -1)
+        case signature_fields.length
+        when 4
+          scope2, time, login, sig = signature_fields
+          role = nil
+          message = "#{auth_scope}|#{time}|#{login}"
+        when 5
+          scope2, time, login, role, sig = signature_fields
+          message = "#{auth_scope}|#{time}|#{login}|#{role}"
+        end
 
-        sig = [sig].pack('H*')
+        sig = [sig.to_s].pack('H*')
         t1 = scope2 == auth_scope
         t2 = Time.now.to_i - time.to_i < 30
-        t3 = verify_key.verify(sig, message) rescue false
+        t3 = verify_key.verify(sig, message.to_s) rescue false
 
         if t1 && t2 && t3
           safe_login = LogSafety.redact_text(login).inspect
           safe_scope = LogSafety.redact_text(auth_scope).inspect
           LOGGER.info "Slim auth login successful login=#{safe_login} scope=#{safe_scope}"
+          identity = { login: }
+          identity[:role] = role unless role.to_s.empty?
 
           if params[:redirect] == 'do'
             redirect_with_authorization_code(
-              auth_scope:, context:, identity: { login: }
+              auth_scope:, context:, identity:
             )
           else
             # SSO Session cookie WJT
-            generate_token scope: auth_scope, login:, sso: true
+            generate_token scope: auth_scope, **identity, sso: true
             slim :signature_auth, locals: { authorization_fields:, scope: auth_scope, bot_payload:, auth_bot: AUTH_BOT, error: nil, signature:, redirect: 'do' }, layout: false
           end
         else
