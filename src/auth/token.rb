@@ -46,11 +46,12 @@ module Token
       iss: iss,
       # sub: 'fake',
       login: 'false',
-      role: 'fake',
+      role: '',
       **external.transform_keys(&:to_sym),
       exp: Time.now.to_i + 12 * 3600,
       iat: Time.now.to_i
     }
+    data[:role] = data[:role].to_s
     # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
     access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
     response.set_cookie(COOKIE_TOKEN_NAME, value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)

@@ -71,6 +71,19 @@ RSpec.describe AuthorizationCode do
     token_response = JSON.parse(response.body)
     expect(token_response['scope']).to eq(requested_scope)
 
+    access_claims = JWT.decode(
+      token_response.fetch('access_token'), SIGNING_KEY.verify_key, true,
+      algorithm: 'EdDSA'
+    ).first
+    expect(access_claims).to include('role' => '')
+
+    userinfo = request.get(
+      '/oauth_slim/user',
+      'HTTP_AUTHORIZATION' => "Bearer #{token_response.fetch('access_token')}"
+    )
+    expect(userinfo.status).to eq(200)
+    expect(JSON.parse(userinfo.body)).to include('role' => '')
+
     claims = JWT.decode(
       token_response.fetch('id_token'), ENV.fetch('OIDC_CLIENT_SECRET'), true,
       algorithm: 'HS256'

@@ -9,8 +9,9 @@ require 'rack'
 require 'zlib'
 require_relative '../auth/domain_payload'
 require_relative '../auth/log_safety'
+require_relative 'signature_message'
 
-USERS_KEYS = %i[tg_id login scopes]
+USERS_KEYS = %i[tg_id login scopes role].freeze
 
 File.readlines("#{__dir__}/.secrets").each do |line|
   key, value = line.split('=')
@@ -67,9 +68,11 @@ end
 
 def send_audit_event(status:, scope:, from:, user: nil, policy: nil, reason: nil)
   user_text = user ? "#{user[:login]} (TID: #{from['id']})" : "Unregistered (TID: #{from['id']})"
+  role = AuthBot::SignatureMessage.normalize_role(user&.dig(:role))
   lines = [
     audit_line('User', user_text),
     audit_line('Scope', scope),
+    role && audit_line('Role', role),
     policy && audit_line('Policy', policy),
     reason && audit_line('Reason', reason),
     audit_line('Username', telegram_username(from)),
@@ -184,14 +187,16 @@ loop do
         next
       end
 
-      message = "#{scope}|#{Time.now.to_i}|#{user[:login]}"
+      role = AuthBot::SignatureMessage.normalize_role(user[:role])
+      message = AuthBot::SignatureMessage.build(scope:, login: user[:login], role:)
 
       signature = SIGNING_KEY.sign message
       hex_signature = signature.unpack('H*').first
 
       reply = Base64.urlsafe_encode64 Zlib::Deflate.deflate("#{message}|#{hex_signature}")
+      reply_lines = [role && audit_line('Role', role), "<code>#{reply}</code>"].compact
 
-      api_post('sendMessage', chat_id: chat_id, text: "<code>#{reply}</code>", parse_mode: 'HTML')
+      api_post('sendMessage', chat_id: chat_id, text: reply_lines.join("\n"), parse_mode: 'HTML')
       send_audit_event(status: 'SUCCESS AUTH', scope:, from:, user:, policy: policy_text(rules))
     end
   rescue => e

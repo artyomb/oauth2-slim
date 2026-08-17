@@ -108,7 +108,7 @@ module Auth20
         {
           sub: subject.to_s,
           login: access_token['login'],
-          role: access_token['role'] || 'admin',
+          role: access_token['role'].to_s,
           name: access_token['name'],
           org: access_token['org'],
           email: access_token['email']
