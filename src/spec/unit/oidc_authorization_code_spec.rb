@@ -15,6 +15,7 @@ ENV['OIDC_ISSUER'] = 'https://auth.test'
 LOGGER = Logger.new(File::NULL) unless defined?(LOGGER)
 
 require_relative '../../auth/auth20'
+require_relative '../../auth/openid_connect'
 require_relative '../../auth/token'
 
 class OIDCAuthorizationCodeSpecApp < Sinatra::Base
@@ -22,7 +23,7 @@ class OIDCAuthorizationCodeSpecApp < Sinatra::Base
   set :raise_errors, true
   set :show_exceptions, false
 
-  helpers Token, AuthorizationCode, Auth20
+  helpers Token, AuthorizationCode, Auth20, OpenIDConnect
 
   get '/issue' do
     code = create_authorization_code(
@@ -32,6 +33,7 @@ class OIDCAuthorizationCodeSpecApp < Sinatra::Base
         uid: 42,
         login: 'alice',
         email: 'alice@example.test',
+        role: params[:role],
         ignored: 'not-in-the-grant'
       }
     )
@@ -75,7 +77,15 @@ RSpec.describe AuthorizationCode do
       token_response.fetch('access_token'), SIGNING_KEY.verify_key, true,
       algorithm: 'EdDSA'
     ).first
-    expect(access_claims).to include('role' => '')
+    expect(access_claims).to include(
+      'iss' => 'https://auth.test',
+      'sub' => '42',
+      'name' => 'alice',
+      'email' => 'alice@example.test',
+      'role' => '',
+      'roles' => []
+    )
+    expect(access_claims.fetch('jti')).to match(/\A[0-9a-f-]{36}\z/)
 
     userinfo = request.get(
       '/oauth_slim/user',
@@ -107,6 +117,28 @@ RSpec.describe AuthorizationCode do
     expect(JSON.parse(response.body)).not_to have_key('id_token')
   end
 
+  it 'mirrors the assigned role and issues a unique token ID' do
+    first = access_claims(exchange_code(issue_code(role: 'admin'), client_id: 'ceph-dashboard'))
+    second = access_claims(exchange_code(issue_code(role: 'admin'), client_id: 'ceph-dashboard'))
+
+    expect(first).to include('role' => 'admin', 'roles' => ['admin'])
+    expect(first.fetch('jti')).not_to eq(second.fetch('jti'))
+  end
+
+  it 'advertises issuer-based endpoints' do
+    response = request.get('/.well-known/openid-configuration')
+
+    expect(response.status).to eq(200)
+    expect(JSON.parse(response.body)).to include(
+      'issuer' => 'https://auth.test',
+      'authorization_endpoint' => 'https://auth.test/authorize',
+      'token_endpoint' => 'https://auth.test/token',
+      'userinfo_endpoint' => 'https://auth.test/user',
+      'end_session_endpoint' => 'https://auth.test/logout',
+      'id_token_signing_alg_values_supported' => ['HS256']
+    )
+  end
+
   it 'rejects expired authorization codes when they are consumed' do
     code = issue_code
     AUTH_CODES.fetch(code)[:time] = Time.now.to_i - AuthorizationCode::AUTH_CODE_TTL - 1
@@ -117,11 +149,11 @@ RSpec.describe AuthorizationCode do
 
   def issue_code(
     nonce: nil, client_id: 'test-client', requested_scope: 'openid',
-    redirect_uri: 'https://app.test/callback'
+    redirect_uri: 'https://app.test/callback', role: nil
   )
     query = URI.encode_www_form(
       client_id:, redirect_uri:, response_type: 'code',
-      scope: requested_scope, state: 'client-state', nonce:
+      scope: requested_scope, state: 'client-state', nonce:, role:
     )
     response = request.get("/issue?#{query}")
     JSON.parse(response.body).fetch('code')
@@ -136,5 +168,10 @@ RSpec.describe AuthorizationCode do
         grant_type: 'authorization_code'
       )
     )
+  end
+
+  def access_claims(response)
+    token = JSON.parse(response.body).fetch('access_token')
+    JWT.decode(token, SIGNING_KEY.verify_key, true, algorithm: 'EdDSA').first
   end
 end

@@ -43,7 +43,7 @@ def revoked?(&block)
 end
 
 module AuthForward
-  OWNED_IDENTITY_HEADERS = %w[x-authslim x-token].freeze
+  OWNED_IDENTITY_HEADERS = %w[x-access-token x-authslim x-token].freeze
 
   require_relative '../custom/forward_auth.rb' if File.exist?("#{__dir__}/../custom/forward_auth.rb")
 
@@ -141,6 +141,14 @@ module AuthForward
         Rack::Utils.parse_nested_query(query)
       end
 
+      def ceph_access_token?(token)
+        claims = decode_token(token)
+        required = %w[sub name email jti iat exp]
+        required.all? { |claim| !claims[claim].to_s.empty? } && claims['roles'].is_a?(Array)
+      rescue JWT::DecodeError
+        false
+      end
+
       def complete_forward_auth(code, x_params)
         LOGGER.info 'FORWARD_AUTH code received'
         grant = consume_authorization_code(code)
@@ -160,21 +168,25 @@ module AuthForward
         redirect full_uri_short + state_q
       end
 
-      def handle_forward_auth_request(optional:)
+      def handle_forward_auth_request(optional:, expose_access_token: false)
         x_params = forward_auth_params
         LOGGER.debug "Forward auth query received: #{LogSafety.redact_hash(x_params)}"
 
         return complete_forward_auth(x_params['code'], x_params) if x_params.key? 'code'
 
-        authenticated = valid_token?
+        access_token = get_token
+        authenticated = valid_token?(access_token)
         authenticated &&= !FORWARD_AUTH[:revoked?].call
+        authenticated &&= ceph_access_token?(access_token) if expose_access_token
         if authenticated
           LOGGER.info 'AUTH TOKEN VALID'
           forward_incoming_headers
           headers['X-AuthSlim'] = 'authorized'
+          headers['X-Access-Token'] = access_token if expose_access_token
           return status 200
         end
 
+        headers.delete 'X-Access-Token'
         headers.delete 'X-Token'
         if optional
           LOGGER.info 'Optional forward auth allowed anonymous request'
@@ -203,8 +215,25 @@ module AuthForward
         "#{proto}://#{host}"
       end
 
+      def oidc_logout_url
+        issuer = ENV['OIDC_ISSUER'].to_s.sub(%r{/\z}, '')
+        "#{issuer}/logout" unless issuer.empty?
+      end
+
+      def oauth2_sign_out_redirect
+        return params['rd'] if params['rd'].to_s == oidc_logout_url
+
+        logout_redirect_uri
+      end
+
       get('/auth') { handle_forward_auth_request(optional: false) }
+      get('/auth/ceph') { handle_forward_auth_request(optional: false, expose_access_token: true) }
       get('/auth/optional') { handle_forward_auth_request(optional: true) }
+
+      get('/oauth2/sign_out') do
+        logout
+        redirect oauth2_sign_out_redirect
+      end
 
       get %r{.*/logout} do
         logout

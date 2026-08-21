@@ -1,6 +1,7 @@
 require 'ed25519'
 require 'jwt'
 require 'jwt/eddsa'
+require 'securerandom'
 require_relative 'log_safety'
 
 KEY_FILENAME = ENV['RACK_ENV'] == 'production' ? '/private_keys/signing_key' : "#{__dir__}/../signing_key"
@@ -39,19 +40,25 @@ module Token
 
   def generate_token(external = {})
     LOGGER.debug 'Generating token ...'
-    # Is defined only if signature_auth is used
-    # Todo: fix for telegram_auth
-    iss = defined?(FORWARD_OAUTH_AUTH_URL) ? FORWARD_OAUTH_AUTH_URL.to_s : ''
+    now = Time.now.to_i
+    issuer = ENV['OIDC_ISSUER'].to_s
+    issuer = FORWARD_OAUTH_AUTH_URL.to_s if issuer.empty? && defined?(FORWARD_OAUTH_AUTH_URL)
+    issuer = issuer.sub(%r{/\z}, '')
     data = {
-      iss: iss,
-      # sub: 'fake',
+      iss: issuer.to_s,
       login: 'false',
       role: '',
-      **external.transform_keys(&:to_sym),
-      exp: Time.now.to_i + 12 * 3600,
-      iat: Time.now.to_i
+      **external.transform_keys(&:to_sym)
     }
+    subject = data[:sub] || data[:uid] || data[:login]
+    data[:sub] = subject.to_s unless subject.to_s.empty?
+    data[:name] = data[:login] if data[:name].to_s.empty?
+    data[:email] = "#{data[:login]}@local.net" if data[:email].to_s.empty? && !data[:login].to_s.empty?
     data[:role] = data[:role].to_s
+    data[:roles] = data[:role].empty? ? [] : [data[:role]]
+    data[:jti] = SecureRandom.uuid
+    data[:iat] = now
+    data[:exp] = now + 12 * 3600
     # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
     access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
     response.set_cookie(COOKIE_TOKEN_NAME, value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)

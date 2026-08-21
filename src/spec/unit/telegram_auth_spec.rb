@@ -31,9 +31,12 @@ RSpec.describe TelegramAuth do
 
   around do |example|
     revoked = FORWARD_AUTH[:revoked?]
+    issuer = ENV['OIDC_ISSUER']
+    ENV['OIDC_ISSUER'] = 'https://auth.test/oauth_slim'
     example.run
   ensure
     FORWARD_AUTH[:revoked?] = revoked
+    issuer.nil? ? ENV.delete('OIDC_ISSUER') : ENV['OIDC_ISSUER'] = issuer
   end
 
   before do
@@ -237,6 +240,118 @@ RSpec.describe TelegramAuth do
     end
   end
 
+  describe "GET /auth/ceph" do
+    it "exposes only the authenticated raw token as X-Access-Token" do
+      token = signed_token(login: "alice", role: "admin")
+      response = ceph_auth_request(
+        token:,
+        headers: { "HTTP_X_ACCESS_TOKEN" => signed_token(login: "forged", role: "admin") }
+      )
+
+      expect(response.status).to eq(200)
+      expect(response["X-AuthSlim"]).to eq("authorized")
+      expect(response["X-Access-Token"]).to eq(token)
+      expect(JSON.parse(response["X-Token"])).to include("login" => "alice", "role" => "admin")
+    end
+
+    it "does not expose the raw token through generic forward auth" do
+      token = signed_token
+      response = forward_auth_request("/auth", token:, headers: { "HTTP_X_ACCESS_TOKEN" => "forged" })
+
+      expect(response.status).to eq(200)
+      expect(response["X-AuthSlim"]).to eq("authorized")
+      expect(response["X-Access-Token"]).to be_nil
+    end
+
+    it "does not expose a client header for invalid, expired, or revoked authentication" do
+      invalid_tokens = ["not-a-jwt", signed_token(exp: Time.now.to_i - 1)]
+      invalid_tokens.each do |token|
+        response = ceph_auth_request(token:, headers: { "HTTP_X_ACCESS_TOKEN" => "forged" })
+
+        expect(response.status).to eq(302)
+        expect(response["X-Access-Token"]).to be_nil
+      end
+
+      FORWARD_AUTH[:revoked?] = -> { true }
+      revoked = ceph_auth_request(
+        token: signed_token,
+        headers: { "HTTP_X_ACCESS_TOKEN" => "forged" }
+      )
+      expect(revoked.status).to eq(302)
+      expect(revoked["X-Access-Token"]).to be_nil
+    end
+
+    it "renews an otherwise valid legacy token that lacks Ceph claims" do
+      legacy_token = JWT.encode(
+        { login: "alice", role: "admin", exp: Time.now.to_i + 3600, iat: Time.now.to_i },
+        SIGNING_KEY,
+        "EdDSA"
+      )
+      response = ceph_auth_request(token: legacy_token)
+
+      expect(response.status).to eq(302)
+      expect(response["X-Access-Token"]).to be_nil
+      expect(URI.parse(response["location"]).path).to eq("/authorize")
+    end
+
+    it "issues a compatible token after completing the authorization callback" do
+      code = "ceph-auth-code"
+      AUTH_CODES[code] = {
+        scope: "app.test",
+        time: Time.now.to_i,
+        uid: 84,
+        login: "bob",
+        name: "Bob",
+        role: "admin",
+        email: "bob@example.test"
+      }
+
+      callback = ceph_auth_request(forwarded_uri: "/?code=#{code}")
+      expect(callback.status).to eq(302)
+      token = auth_cookie_value(callback)
+
+      authenticated = ceph_auth_request(token:)
+      claims = JWT.decode(
+        authenticated["X-Access-Token"], SIGNING_KEY.verify_key, true, algorithm: "EdDSA"
+      ).first
+      expect(claims).to include(
+        "sub" => "84",
+        "name" => "Bob",
+        "email" => "bob@example.test",
+        "role" => "admin",
+        "roles" => ["admin"]
+      )
+      expect(claims.fetch("jti")).to match(/\A[0-9a-f-]{36}\z/)
+    end
+  end
+
+  describe "GET /oauth2/sign_out" do
+    it "clears authentication and follows the configured issuer logout URL" do
+      logout_url = "#{ENV.fetch('OIDC_ISSUER')}/logout"
+      response = request.get(
+        "/oauth2/sign_out?#{URI.encode_www_form(rd: logout_url)}",
+        "HTTP_COOKIE" => "#{COOKIE_TOKEN_NAME}=#{signed_token}",
+        "HTTP_X_FORWARDED_PROTO" => "https",
+        "HTTP_X_FORWARDED_HOST" => "ceph.test"
+      )
+
+      expect(response.status).to eq(302)
+      expect(response["location"]).to eq(logout_url)
+      expect(auth_cookie_value(response)).to eq("")
+    end
+
+    it "ignores an untrusted post-logout redirect" do
+      response = request.get(
+        "/oauth2/sign_out?#{URI.encode_www_form(rd: 'https://attacker.test/')}",
+        "HTTP_X_FORWARDED_PROTO" => "https",
+        "HTTP_X_FORWARDED_HOST" => "ceph.test"
+      )
+
+      expect(response.status).to eq(302)
+      expect(response["location"]).to eq("https://ceph.test")
+    end
+  end
+
   it "rejects a linked account without a login" do
     TelegramAuth::AUTH_DB.fetch = [{ id: 42 }]
 
@@ -254,6 +369,14 @@ RSpec.describe TelegramAuth do
   end
 
   def optional_auth_request(token: nil, forwarded_uri: "/news", headers: {})
+    forward_auth_request("/auth/optional", token:, forwarded_uri:, headers:)
+  end
+
+  def ceph_auth_request(token: nil, forwarded_uri: "/", headers: {})
+    forward_auth_request("/auth/ceph", token:, forwarded_uri:, headers:)
+  end
+
+  def forward_auth_request(path, token: nil, forwarded_uri: "/news", headers: {})
     env = {
       "HTTP_HOST" => "auth.test",
       "HTTP_X_FORWARDED_PROTO" => "https",
@@ -262,11 +385,25 @@ RSpec.describe TelegramAuth do
       **headers
     }
     env["HTTP_COOKIE"] = "#{COOKIE_TOKEN_NAME}=#{token}" if token
-    request.get("/auth/optional", env)
+    request.get(path, env)
   end
 
   def signed_token(login: "alice", role: "viewer", exp: Time.now.to_i + 3600)
-    JWT.encode({ login:, role:, exp:, iat: Time.now.to_i }, SIGNING_KEY, "EdDSA")
+    JWT.encode(
+      {
+        sub: login,
+        login:,
+        name: login,
+        email: "#{login}@example.test",
+        role:,
+        roles: role.to_s.empty? ? [] : [role.to_s],
+        jti: SecureRandom.uuid,
+        exp:,
+        iat: Time.now.to_i
+      },
+      SIGNING_KEY,
+      "EdDSA"
+    )
   end
 
   def auth_cookie_value(response)
