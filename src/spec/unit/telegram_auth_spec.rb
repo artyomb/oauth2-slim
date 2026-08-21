@@ -241,6 +241,18 @@ RSpec.describe TelegramAuth do
   end
 
   describe "GET /auth/ceph" do
+    it "intercepts Dashboard logout and clears the local authentication" do
+      response = ceph_auth_request(
+        token: signed_token,
+        forwarded_uri: "/auth/oauth2/logout?return=/"
+      )
+
+      expect(response.status).to eq(302)
+      expect(response["location"]).to eq("#{ENV.fetch('OIDC_ISSUER')}/logout")
+      expect(response["X-Access-Token"]).to be_nil
+      expect(auth_cookie_value(response)).to eq("")
+    end
+
     it "exposes only the authenticated raw token as X-Access-Token" do
       token = signed_token(login: "alice", role: "admin")
       response = ceph_auth_request(

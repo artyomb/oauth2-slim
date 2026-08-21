@@ -141,6 +141,11 @@ module AuthForward
         Rack::Utils.parse_nested_query(query)
       end
 
+      def ceph_logout_request?
+        forwarded_uri = request.env['HTTP_X_FORWARDED_URI'].to_s
+        forwarded_uri.split('?', 2).first == '/auth/oauth2/logout'
+      end
+
       def ceph_access_token?(token)
         claims = decode_token(token)
         required = %w[sub name email jti iat exp]
@@ -169,6 +174,12 @@ module AuthForward
       end
 
       def handle_forward_auth_request(optional:, expose_access_token: false)
+        if expose_access_token && ceph_logout_request?
+          LOGGER.info 'Ceph logout intercepted'
+          logout
+          redirect oidc_logout_url || logout_redirect_uri
+        end
+
         x_params = forward_auth_params
         LOGGER.debug "Forward auth query received: #{LogSafety.redact_hash(x_params)}"
 
