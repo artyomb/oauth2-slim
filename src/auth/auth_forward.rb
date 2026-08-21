@@ -177,7 +177,7 @@ module AuthForward
         if expose_access_token && ceph_logout_request?
           LOGGER.info 'Ceph logout intercepted'
           logout
-          redirect oidc_logout_url || logout_redirect_uri
+          redirect logout_redirect_uri
         end
 
         x_params = forward_auth_params
