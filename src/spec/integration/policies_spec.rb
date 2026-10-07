@@ -59,6 +59,7 @@ else
     let(:request) { Rack::MockRequest.new(PolicyIntegrationApp) }
     let(:repository) { PolicyIntegrationApp.policy_repository }
     let(:api) { '/api/v1/admin/policies' }
+    let(:admin_path) { Authorization::PolicyController::ADMIN_PATH }
     let(:runtime) { '/api/v1/me/policies?resource_type=resource&action=read' }
     let(:definition) do
       { 'example' => { 'values' => ['Юникод'] },
@@ -370,14 +371,66 @@ else
 
     it 'requires CSRF for cookie-authenticated mutations and renders the real admin page' do
       cookie = "#{COOKIE_TOKEN_NAME}=#{token(@admin)}"
-      page = call('GET', '/admin/policies', as: nil, headers: { 'HTTP_COOKIE' => cookie })
+      page = call('GET', admin_path, as: nil, headers: { 'HTTP_COOKIE' => cookie })
       expect(page.status).to eq(200), page.body
       expect(page.body).to include('policy-form', 'policy-bindings', 'policy-translations')
       csrf = page.body[/data-csrf="([^"]+)"/, 1]
       session_cookie = Array(page['set-cookie']).find { |value| value.start_with?('rack.session=') }.split(';').first
       headers = { 'HTTP_COOKIE' => "#{cookie}; #{session_cookie}" }
-      expect(call('POST', api, attributes, as: nil, headers:).status).to eq(403)
-      expect(call('POST', api, attributes, as: nil, headers: headers.merge('HTTP_X_CSRF_TOKEN' => csrf)).status).to eq(201)
+      [api, "#{admin_path}/data"].each do |path|
+        expect(call('POST', path, attributes, as: nil, headers:).status).to eq(403)
+        expect(call('POST', path, attributes, as: nil, headers: headers.merge('HTTP_X_CSRF_TOKEN' => csrf)).status).to eq(201)
+      end
+    end
+
+    it 'keeps navigation, assets, and browser APIs beneath the configured policy ingress' do
+      cookie = { 'HTTP_COOKIE' => "#{COOKIE_TOKEN_NAME}=#{token(@admin)}" }
+      expect(admin_path).to eq(File.join(File.dirname(DB_USER_ADMIN_PATH), 'policies'))
+      ['', '/auth-proxy'].each do |mount|
+        headers = cookie.merge('SCRIPT_NAME' => mount)
+        page = call('GET', admin_path, as: nil, headers:)
+        expect(page.status).to eq(200), page.body
+        expect(page.body).to include("href=\"#{mount}#{DB_USER_ADMIN_PATH}\"", "data-api=\"#{mount}#{admin_path}/data\"", "data-users-api=\"#{mount}#{admin_path}/users\"")
+        users = call('GET', DB_USER_ADMIN_PATH, as: nil, headers:)
+        expect(users.status).to eq(200), users.body
+        expect(users.body).to include("href=\"#{mount}#{admin_path}\"")
+        { 'css/policies.css' => 'text/css', 'js/policy-json.js' => 'javascript', 'js/policies.js' => 'javascript' }.each do |asset, content_type|
+          expect(page.body).to include("#{mount}#{admin_path}/#{asset}")
+          response = call('GET', "#{admin_path}/#{asset}", as: nil, headers:)
+          expect(response.status).to eq(200)
+          expect(response['content-type']).to include(content_type)
+          expect(response.body).to eq(File.binread(File.expand_path("../../public/#{asset}", __dir__)))
+        end
+      end
+    end
+
+    it 'serves the full protected management workflow under the policy page path' do
+      path = "#{admin_path}/data"
+      response = call('POST', path, attributes)
+      expect(response.status).to eq(201), response.body
+      record_path = "#{path}/#{body(response)['id']}"
+      expect(response['location']).to eq(record_path)
+      expect(body(call('GET', path))['total']).to eq(1)
+      expect(body(call('GET', "#{admin_path}/users?search=alice"))['data'].map { |user| user['id'] }).to eq([@alice])
+      expect(body(call('PATCH', record_path, { expected_revision: 1, name: 'Updated' }))['revision']).to eq(2)
+      assignment = "#{record_path}/assignments/users/#{@alice}"
+      expect(call('PUT', assignment).status).to eq(200)
+      expect(body(call('GET', "#{record_path}/assignments"))['total']).to eq(1)
+      [['GET', path], ['POST', path], ['GET', record_path], ['PATCH', record_path], ['DELETE', record_path],
+       ['GET', "#{record_path}/assignments"], ['PUT', assignment], ['DELETE', assignment], ['GET', "#{admin_path}/users"]].each do |method, url|
+        expect(call(method, url, as: nil).status).to eq(401)
+        expect(call(method, url, as: @alice).status).to eq(403)
+      end
+      expect(call('DELETE', assignment).status).to eq(200)
+      expect(call('DELETE', record_path, { expected_revision: 2 }).status).to eq(200)
+      expect(call('GET', record_path).status).to eq(404)
+    end
+
+    it 'uses the public policy path as the login return URL behind a proxy' do
+      response = call('GET', admin_path, as: nil, headers: { 'HTTP_X_FORWARDED_PROTO' => 'https', 'HTTP_X_FORWARDED_HOST' => 'auth.test', 'SCRIPT_NAME' => '/auth-proxy' })
+      expect(response.status).to eq(302)
+      query = URI.decode_www_form(URI.parse(response['location']).query).to_h
+      expect(query['redirect_uri']).to eq("https://auth.test/auth-proxy#{admin_path}")
     end
 
     it 'preserves stable database IDs when reusing an existing login cookie' do
@@ -416,9 +469,9 @@ else
 
     it 'finishes the admin login callback without requiring an existing cookie' do
       AUTH_CODES['policy-admin-code'] = { uid: @admin, login: 'admin', role: 'admin', time: Time.now.to_i }
-      response = call('GET', '/admin/policies?code=policy-admin-code', as: nil)
+      response = call('GET', "#{admin_path}?code=policy-admin-code", as: nil)
       expect(response.status).to eq(302)
-      expect(response['location']).to end_with('/admin/policies')
+      expect(response['location']).to end_with(admin_path)
       expect(Array(response['set-cookie']).join).to include(COOKIE_TOKEN_NAME)
       expect(AUTH_CODES).not_to have_key('policy-admin-code')
     end
@@ -426,7 +479,7 @@ else
     it 'explicitly reports non-DB mode as unavailable and leaves service resolution absent' do
       unavailable = Rack::MockRequest.new(UnavailablePolicyApp)
       expect(unavailable.get('/api/v1/me/policies').status).to eq(503)
-      expect(unavailable.get('/admin/policies').status).to eq(503)
+      expect(unavailable.get(admin_path).status).to eq(503)
       expect(call('POST', '/api/v1/authorization/resolve', { subject: { id: @alice } }).status).to eq(404)
     end
   end

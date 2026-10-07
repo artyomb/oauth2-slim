@@ -16,7 +16,7 @@ require_relative 'auth/openid_connect'
 require_relative 'authorization/controller'
 require_relative 'authorization/same_origin'
 
-use Authorization::SameOrigin
+use Authorization::SameOrigin, admin_path: Authorization::PolicyController::ADMIN_PATH
 StackServiceBase.rack_setup self
 
 enable :sessions

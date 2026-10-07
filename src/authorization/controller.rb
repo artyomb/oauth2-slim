@@ -8,7 +8,7 @@ require_relative 'schema'
 module Authorization
   module PolicyController
     API_PATH = '/api/v1/admin/policies'
-    ADMIN_PATH = '/admin/policies'
+    ADMIN_PATH = File.join(File.dirname(ENV.fetch('DB_USER_ADMIN_PATH', '/admin/users')), 'policies')
 
     def self.included(base)
       base.class_eval do
@@ -138,6 +138,12 @@ module Authorization
           end
         end
 
+        %w[css/policies.css js/policy-json.js js/policies.js].each do |asset|
+          get "#{ADMIN_PATH}/#{asset}" do
+            send_file File.expand_path("../public/#{asset}", __dir__)
+          end
+        end
+
         get '/api/v1/me/policies' do
           policy_action do
             subject = policy_principal!
@@ -149,67 +155,71 @@ module Authorization
           end
         end
 
-        get '/api/v1/admin/policy-users' do
-          policy_admin_request { policy_json(policy_repository.users(params)) }
-        end
-
-        get API_PATH do
-          policy_admin_request { policy_json(policy_repository.list(params)) }
-        end
-
-        post API_PATH do
-          policy_admin_request(write: true) do
-            policy = policy_repository.create(Authorization::Validation.policy(policy_body))
-            policy_audit('created', policy_id: policy[:id])
-            headers['Location'] = "#{request.script_name}#{API_PATH}/#{policy[:id]}"
-            policy_json(policy, status: 201)
+        ['/api/v1/admin/policy-users', "#{ADMIN_PATH}/users"].each do |path|
+          get path do
+            policy_admin_request { policy_json(policy_repository.users(params)) }
           end
         end
 
-        get "#{API_PATH}/:id" do
-          policy_admin_request { policy_json(policy_repository.find(Authorization::Validation.id(params[:id]))) }
-        end
-
-        patch "#{API_PATH}/:id" do
-          policy_admin_request(write: true) do
-            input = policy_body
-            revision = Authorization::Validation.revision(input)
-            attributes = Authorization::Validation.policy(input, partial: true)
-            policy = policy_repository.update(Authorization::Validation.id(params[:id]), attributes, expected_revision: revision)
-            policy_audit('updated', policy_id: policy[:id])
-            policy_json(policy)
+        [API_PATH, "#{ADMIN_PATH}/data"].each do |api_path|
+          get api_path do
+            policy_admin_request { policy_json(policy_repository.list(params)) }
           end
-        end
 
-        delete "#{API_PATH}/:id" do
-          policy_admin_request(write: true) do
-            revision = Authorization::Validation.revision(policy_body)
-            id = Authorization::Validation.id(params[:id])
-            policy_repository.delete(id, expected_revision: revision)
-            policy_audit('deleted', policy_id: id)
-            policy_json({ notice: 'Policy deleted' })
+          post api_path do
+            policy_admin_request(write: true) do
+              policy = policy_repository.create(Authorization::Validation.policy(policy_body))
+              policy_audit('created', policy_id: policy[:id])
+              headers['Location'] = "#{request.script_name}#{api_path}/#{policy[:id]}"
+              policy_json(policy, status: 201)
+            end
           end
-        end
 
-        get "#{API_PATH}/:id/assignments" do
-          policy_admin_request { policy_json(policy_repository.assignments(Authorization::Validation.id(params[:id]), params)) }
-        end
-
-        put "#{API_PATH}/:id/assignments/users/:user_id" do
-          policy_admin_request(write: true) do
-            id, user_id = %i[id user_id].map { |key| Authorization::Validation.id(params[key]) }
-            policy_repository.assign(id, user_id)
-            policy_audit('assigned', policy_id: id, user_id:)
-            policy_json({ notice: 'Policy assigned' })
+          get "#{api_path}/:id" do
+            policy_admin_request { policy_json(policy_repository.find(Authorization::Validation.id(params[:id]))) }
           end
-        end
 
-        delete "#{API_PATH}/:id/assignments/users/:user_id" do
-          policy_admin_request(write: true) do
-            id, user_id = %i[id user_id].map { |key| Authorization::Validation.id(params[key]) }
-            policy_repository.assign(id, user_id, remove: true)
-            policy_audit('unassigned', policy_id: id, user_id:)
-            policy_json({ notice: 'Assignment removed' })
+          patch "#{api_path}/:id" do
+            policy_admin_request(write: true) do
+              input = policy_body
+              revision = Authorization::Validation.revision(input)
+              attributes = Authorization::Validation.policy(input, partial: true)
+              policy = policy_repository.update(Authorization::Validation.id(params[:id]), attributes, expected_revision: revision)
+              policy_audit('updated', policy_id: policy[:id])
+              policy_json(policy)
+            end
+          end
+
+          delete "#{api_path}/:id" do
+            policy_admin_request(write: true) do
+              revision = Authorization::Validation.revision(policy_body)
+              id = Authorization::Validation.id(params[:id])
+              policy_repository.delete(id, expected_revision: revision)
+              policy_audit('deleted', policy_id: id)
+              policy_json({ notice: 'Policy deleted' })
+            end
+          end
+
+          get "#{api_path}/:id/assignments" do
+            policy_admin_request { policy_json(policy_repository.assignments(Authorization::Validation.id(params[:id]), params)) }
+          end
+
+          put "#{api_path}/:id/assignments/users/:user_id" do
+            policy_admin_request(write: true) do
+              id, user_id = %i[id user_id].map { |key| Authorization::Validation.id(params[key]) }
+              policy_repository.assign(id, user_id)
+              policy_audit('assigned', policy_id: id, user_id:)
+              policy_json({ notice: 'Policy assigned' })
+            end
+          end
+
+          delete "#{api_path}/:id/assignments/users/:user_id" do
+            policy_admin_request(write: true) do
+              id, user_id = %i[id user_id].map { |key| Authorization::Validation.id(params[key]) }
+              policy_repository.assign(id, user_id, remove: true)
+              policy_audit('unassigned', policy_id: id, user_id:)
+              policy_json({ notice: 'Assignment removed' })
+            end
           end
         end
       end

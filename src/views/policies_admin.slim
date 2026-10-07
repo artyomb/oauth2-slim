@@ -1,5 +1,5 @@
-link rel="stylesheet" href="#{request.script_name}/css/policies.css"
-.policy-page#policy-app data-api="#{request.script_name}/api/v1/admin/policies" data-users-api="#{request.script_name}/api/v1/admin/policy-users" data-csrf=policy_csrf_token
+link rel="stylesheet" href="#{policy_path}/css/policies.css"
+.policy-page#policy-app data-api="#{policy_path}/data" data-users-api="#{policy_path}/users" data-csrf=policy_csrf_token
   == slim :admin_navigation, layout: false
   header.policy-heading
     div
@@ -121,5 +121,5 @@ link rel="stylesheet" href="#{request.script_name}/css/policies.css"
       button.btn.btn-secondary#policy-confirm-no type="button" = t('policy_admin.cancel')
 
   script#policy-translations type="application/json" == JSON.generate(I18n.t('policy_admin')).gsub('<', '\u003c')
-script src="#{request.script_name}/js/policy-json.js" defer=true
-script src="#{request.script_name}/js/policies.js" defer=true
+script src="#{policy_path}/js/policy-json.js" defer=true
+script src="#{policy_path}/js/policies.js" defer=true

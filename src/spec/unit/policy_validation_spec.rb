@@ -59,12 +59,16 @@ end
 RSpec.describe Authorization::SameOrigin do
   it 'removes inherited credentialed CORS only from policy surfaces' do
     app = ->(_) { [200, { 'access-control-allow-origin' => 'https://attacker.test', 'Access-Control-Allow-Credentials' => 'true' }, ['ok']] }
-    middleware = described_class.new(app)
-    %w[/admin/policies /api/v1/me/policies /api/v1/admin/policies/1 /api/v1/admin/policy-users].each do |path|
-      headers = middleware.call('PATH_INFO' => path)[1]
-      expect(headers.keys.grep(/access-control/i)).to be_empty
-      expect(headers['cache-control']).to eq('no-store')
+    %w[/admin/policies /map/admin/policies].each do |admin_path|
+      middleware = described_class.new(app, admin_path:)
+      [admin_path, "#{admin_path}/data/1", "#{admin_path}/users", '/api/v1/me/policies', '/api/v1/admin/policies/1', '/api/v1/admin/policy-users'].each do |path|
+        headers = middleware.call('PATH_INFO' => path)[1]
+        expect(headers.keys.grep(/access-control/i)).to be_empty
+        expect(headers['cache-control']).to eq('no-store')
+      end
+      ['/auth', "#{admin_path}-other"].each do |path|
+        expect(middleware.call('PATH_INFO' => path)[1]).to have_key('access-control-allow-origin')
+      end
     end
-    expect(middleware.call('PATH_INFO' => '/auth')[1]).to have_key('access-control-allow-origin')
   end
 end

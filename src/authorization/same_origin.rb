@@ -3,13 +3,14 @@
 module Authorization
   # StackServiceBase otherwise reflects every Origin with credentialed CORS.
   class SameOrigin
-    def initialize(app)
+    def initialize(app, admin_path: '/admin/policies')
       @app = app
+      @paths = [admin_path, '/api/v1/me/policies', '/api/v1/admin/policies', '/api/v1/admin/policy-users']
     end
 
     def call(env)
       status, headers, body = @app.call(env)
-      if env['PATH_INFO'].match?(%r{\A/(?:admin/policies|api/v1/(?:me/policies|admin/(?:policies|policy-users)))(?:/|\z)})
+      if @paths.any? { |path| env['PATH_INFO'] == path || env['PATH_INFO'].start_with?("#{path}/") }
         headers = headers.reject { |key, _| key.downcase.start_with?('access-control-') }
         headers['cache-control'] = 'no-store'
       end
