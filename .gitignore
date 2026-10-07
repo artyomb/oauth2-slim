@@ -1,4 +1,5 @@
 .env.local
+.prompts
 /dev/
 *.css.map
 forward_auth.rb

@@ -2,6 +2,7 @@ require 'sequel'
 require 'uri'
 require 'json'
 require_relative 'log_safety'
+require_relative '../authorization/schema'
 
 USERS_DB_URL = ENV['USERS_DB_URL']
 USERS_SCOPE = ENV['AUTH_SCOPE']
@@ -50,20 +51,41 @@ class OAuthUser < Sequel::Model(:oauth_users)
   plugin :timestamps, create: :created_at, update: :updated_at, update_on_create: true
 end
 
+Authorization::Schema.migrate(DB)
+
 if DB_USER_SEED
   seed_hash = Sequel.lit("crypt(?, gen_salt('bf', ?))", DB_USER_SEED_PASSWORD, DB_PASSWORD_COST)
   OAuthUser.insert(login: DB_USER_SEED_LOGIN, password_hash: seed_hash, name: DB_USER_SEED_LOGIN, role: 'admin', email: "#{DB_USER_SEED_LOGIN}@local.net") unless OAuthUser.where(login: DB_USER_SEED_LOGIN).count.positive?
 end
 
 module DBUserAuth
+  class RevocationCheckError < StandardError; end
+
   def self.included(base)
     base.class_eval do
       helpers do
-        def current_auth_user
-          token = get_token
-          return nil unless valid_token?(token)
+        def authenticated_db_user(token = get_token)
+          raise JWT::DecodeError, 'Authentication required' if token.to_s.empty?
+          claims = decode_token(token)
+          id = claims['uid'] || claims['sub']
+          valid = claims['exp'].is_a?(Numeric) && claims['exp'] > Time.now.to_i
+          valid &&= id.to_s.match?(/\A[1-9]\d*\z/) && id.to_i <= 2_147_483_647
+          valid &&= claims['uid'].nil? || claims['sub'].nil? || claims['uid'].to_s == claims['sub'].to_s
+          raise JWT::DecodeError, 'Invalid token identity or expiration' unless valid
+          yield claims if block_given?
 
-          decode_token(token).transform_keys(&:to_sym)
+          begin
+            revoked = defined?(FORWARD_AUTH) && FORWARD_AUTH[:revoked?] && instance_exec(&FORWARD_AUTH[:revoked?])
+          rescue StandardError
+            raise RevocationCheckError, 'Token revocation check failed'
+          end
+          raise JWT::DecodeError, 'Token revoked' if revoked
+
+          OAuthUser.where(id:, deleted_at: nil).first || raise(JWT::DecodeError, 'User no longer exists; sign in again')
+        end
+
+        def current_auth_user
+          token_attributes(authenticated_db_user)
         rescue StandardError
           nil
         end
@@ -152,7 +174,7 @@ module DBUserAuth
           return nil if [USERS_DB_URL, login, password].any? { |value| value.to_s.empty? }
           return nil if password_too_long?(password)
 
-          OAuthUser.select(:id, *USER_FIELDS).where(login: login.to_s).where(Sequel.lit('password_hash = crypt(?, password_hash)', password.to_s)).first
+          OAuthUser.select(:id, *USER_FIELDS).where(login: login.to_s, deleted_at: nil).where(Sequel.lit('password_hash = crypt(?, password_hash)', password.to_s)).first
         rescue => e
           LOGGER.error "Cannot fetch DB user login=#{login}: #{LogSafety.exception_message(e)}"
           nil
@@ -180,7 +202,7 @@ module DBUserAuth
         def token_attributes(user, fallback_login: nil)
           login = user_text(user[:login] || fallback_login)
           {
-            uid: user[:id],
+            uid: user[:id] || user[:uid] || user[:sub],
             login:,
             name: optional_user_text(user[:name]),
             role: optional_user_text(user[:role]),
@@ -204,13 +226,12 @@ module DBUserAuth
       end
 
       get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
-        token = get_token
         context = users_auth_context
         clear_legacy_tokens
 
-        if valid_token?(token)
+        if (user = current_auth_user)
           redirect_with_authorization_code(
-            auth_scope: context[:auth_scope], context:, identity: token_attributes(current_auth_user)
+            auth_scope: context[:auth_scope], context:, identity: user
           )
         end
 

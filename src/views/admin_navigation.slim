@@ -1,0 +1,3 @@
+nav.admin-navigation aria-label=t('policy_admin.navigation')
+  a.btn.btn-secondary href="#{request.script_name}#{DB_USER_ADMIN_PATH}" aria-current=(request.path_info == DB_USER_ADMIN_PATH ? 'page' : nil) = t('user_admin.user_list')
+  a.btn.btn-secondary href="#{request.script_name}/admin/policies" aria-current=(request.path_info == '/admin/policies' ? 'page' : nil) = t('policy_admin.title')

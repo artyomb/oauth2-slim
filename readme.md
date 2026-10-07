@@ -10,6 +10,18 @@ Only `/auth/ceph` returns `X-Access-Token`. The generic endpoints deliberately d
 
 Only attach `/auth/optional` to routes and HTTP methods that are intentionally accessible without authentication. The upstream application remains responsible for authorization of modifications and personalized responses.
 
+# Policy management
+
+Database user mode (`USERS_DB_URL`) includes policy management at `/admin/policies`,
+linked from the existing user administration page. Administrators can create disabled
+JSON policy drafts, assign existing users, edit, duplicate, and enable or disable them.
+`GET /api/v1/me/policies?resource_type=resource&action=read` returns the
+authenticated user's complete active policy set. The application stores and resolves
+policies; the consuming backend evaluates their definitions.
+
+See [policy setup, API, security contract, and tests](docs/policies.md).
+Groups, service authentication, and `/authorization/resolve` are deferred.
+
 # OAuth 2.0 
 
 ### Authorization Request

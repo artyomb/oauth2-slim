@@ -417,6 +417,7 @@ sass:
 
 
 .users-admin-page
+  == slim :admin_navigation, layout: false
   - users_admin_config = { adminPath: admin_path, texts: { edit: t('user_admin.edit_user'), delete: t('user_admin.delete_user'), userFallback: 'user' } }
   .users-admin-shell
     .users-admin-messages#users-admin-messages

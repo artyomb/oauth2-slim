@@ -1,0 +1,125 @@
+link rel="stylesheet" href="#{request.script_name}/css/policies.css"
+.policy-page#policy-app data-api="#{request.script_name}/api/v1/admin/policies" data-users-api="#{request.script_name}/api/v1/admin/policy-users" data-csrf=policy_csrf_token
+  == slim :admin_navigation, layout: false
+  header.policy-heading
+    div
+      h1 = t('policy_admin.title')
+      p.policy-muted = t('policy_admin.subtitle')
+    button.btn.btn-primary#policy-new type="button" = t('policy_admin.new')
+  #policy-message role="status" aria-live="polite"
+
+  section#policy-list aria-label=t('policy_admin.title')
+    form.policy-filters#policy-filters
+      label
+        span = t('policy_admin.search')
+        input type="search" name="search" maxlength="200"
+      label
+        span = t('policy_admin.state')
+        select name="active"
+          option value="" = t('policy_admin.all')
+          option value="true" = t('policy_admin.enabled')
+          option value="false" = t('policy_admin.disabled')
+      label
+        span = t('policy_admin.resource_type')
+        input name="resource_type" maxlength="200"
+      label
+        span = t('policy_admin.action')
+        input name="action" maxlength="200"
+      button.btn.btn-secondary type="submit" = t('policy_admin.filter')
+    p.policy-muted#policy-list-state role="status"
+    .policy-table-wrap
+      table.policy-table
+        thead
+          tr
+            - %w[name type resource_type actions effect state priority assignments updated operations].each do |field|
+              th scope="col" = t("policy_admin.#{field}")
+        tbody#policy-rows
+    .policy-pagination
+      button.btn.btn-secondary#policy-prev type="button" = t('policy_admin.previous')
+      span#policy-page-info
+      button.btn.btn-secondary#policy-next type="button" = t('policy_admin.next')
+
+  section#policy-editor hidden=true aria-labelledby="policy-editor-title"
+    .policy-heading
+      div
+        h2#policy-editor-title
+        p.policy-muted#policy-revision
+      button.btn.btn-secondary#policy-back type="button" = t('policy_admin.back')
+    #policy-conflict hidden=true role="alert"
+      p = t('policy_admin.conflict')
+      button.btn.btn-secondary#policy-reload type="button" = t('policy_admin.reload')
+    form#policy-form
+      .policy-form-grid
+        - %w[name resource_type].each do |field|
+          label
+            span = t("policy_admin.#{field}")
+            input name=field id="policy-#{field}" required=true maxlength="200" aria-describedby="error-#{field}"
+            small.policy-error id="error-#{field}"
+        label.policy-full
+          span = t('policy_admin.description')
+          textarea name="description" rows="2" maxlength="4000" aria-describedby="error-description"
+          small.policy-error#error-description
+        label
+          span = t('policy_admin.actions')
+          input name="actions" required=true placeholder="read" aria-describedby="actions-hint error-actions"
+          small.policy-muted#actions-hint = t('policy_admin.actions_hint')
+          small.policy-error#error-actions
+        label
+          span = t('policy_admin.effect')
+          select name="effect" aria-describedby="error-effect"
+            option value="allow" = t('policy_admin.allow')
+            option value="deny" = t('policy_admin.deny')
+          small.policy-error#error-effect
+        label
+          span = t('policy_admin.priority')
+          input name="priority" type="number" step="any" required=true aria-describedby="priority-hint error-priority"
+          small.policy-muted#priority-hint = t('policy_admin.priority_hint')
+          small.policy-error#error-priority
+        label.policy-checkbox
+          input name="active" type="checkbox" aria-describedby="error-active"
+          span = t('policy_admin.enabled')
+          small.policy-error#error-active
+        .policy-full
+          .policy-heading
+            label for="policy-definition" = t('policy_admin.definition')
+            .policy-buttons
+              button.btn.btn-secondary#policy-format type="button" = t('policy_admin.format')
+              button.btn.btn-secondary#policy-example type="button" = t('policy_admin.example')
+          textarea#policy-definition name="definition" rows="14" required=true spellcheck="false" aria-describedby="definition-hint error-definition"
+          small.policy-error#error-definition role="alert"
+          p.policy-muted#definition-hint = t('policy_admin.definition_hint')
+      .policy-buttons
+        button.btn.btn-primary#policy-save type="submit" = t('policy_admin.save')
+        span#policy-save-state role="status" aria-live="polite"
+
+    section.policy-assignment-section#policy-assignments hidden=true aria-labelledby="policy-assignments-title"
+      h2#policy-assignments-title = t('policy_admin.direct_assignments')
+      p.policy-muted = t('policy_admin.assignments_hint')
+      p#policy-assignment-state role="status"
+      ul.policy-binding-list#policy-bindings
+      .policy-pagination
+        button.btn.btn-secondary#binding-prev type="button" = t('policy_admin.previous')
+        span#binding-page-info
+        button.btn.btn-secondary#binding-next type="button" = t('policy_admin.next')
+      form.policy-filters#policy-user-search
+        label
+          span = t('policy_admin.search_users')
+          input name="search" type="search" maxlength="200"
+        button.btn.btn-secondary type="submit" = t('policy_admin.search')
+      p#policy-user-state role="status"
+      ul.policy-binding-list#policy-user-results
+      .policy-pagination
+        button.btn.btn-secondary#user-prev type="button" = t('policy_admin.previous')
+        span#user-page-info
+        button.btn.btn-secondary#user-next type="button" = t('policy_admin.next')
+
+  dialog#policy-confirm aria-labelledby="policy-confirm-title"
+    h2#policy-confirm-title = t('policy_admin.confirm')
+    p#policy-confirm-text
+    .policy-buttons
+      button.btn.btn-primary#policy-confirm-yes type="button" = t('policy_admin.confirm')
+      button.btn.btn-secondary#policy-confirm-no type="button" = t('policy_admin.cancel')
+
+  script#policy-translations type="application/json" == JSON.generate(I18n.t('policy_admin')).gsub('<', '\u003c')
+script src="#{request.script_name}/js/policy-json.js" defer=true
+script src="#{request.script_name}/js/policies.js" defer=true

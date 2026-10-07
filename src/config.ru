@@ -13,7 +13,10 @@ require_relative 'i18n_setup'
 require_relative 'auth/auth20'
 require_relative 'auth/auth_forward'
 require_relative 'auth/openid_connect'
+require_relative 'authorization/controller'
+require_relative 'authorization/same_origin'
 
+use Authorization::SameOrigin
 StackServiceBase.rack_setup self
 
 enable :sessions
@@ -23,6 +26,8 @@ before do
 end
 
 helpers Auth20, AuthForward, OpenIDConnect
+set :policy_repository, Authorization::PolicyRepository.new(DB) if defined?(OAuthUser) && defined?(DB)
+helpers Authorization::PolicyController
 helpers do
   def t(key, options = {}) = I18n.t(key, **options)
 end
