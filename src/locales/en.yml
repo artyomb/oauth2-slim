@@ -12,7 +12,6 @@ en:
     filter: "Apply filters"
     name: "Name"
     description: "Description"
-    type: "Type"
     resource_type: "Resource type"
     action: "Action"
     actions: "Actions"

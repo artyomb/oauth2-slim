@@ -31,7 +31,7 @@ link rel="stylesheet" href="#{policy_path}/css/policies.css"
       table.policy-table
         thead
           tr
-            - %w[name type resource_type actions effect state priority assignments updated operations].each do |field|
+            - %w[name resource_type actions effect state priority assignments updated operations].each do |field|
               th scope="col" = t("policy_admin.#{field}")
         tbody#policy-rows
     .policy-pagination

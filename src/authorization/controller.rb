@@ -144,14 +144,18 @@ module Authorization
           end
         end
 
-        get '/api/v1/me/policies' do
-          policy_action do
-            subject = policy_principal!
-            unless (params.keys - %w[resource_type action]).empty?
-              raise Authorization::Error.new('Only resource_type and action selectors are accepted', status: 400)
+        %w[/api/v1/me/policies /api/v1/me/policies/definitions].each do |path|
+          get path do
+            policy_action do
+              subject = policy_principal!
+              unless (params.keys - %w[resource_type action]).empty?
+                raise Authorization::Error.new('Only resource_type and action selectors are accepted', status: 400)
+              end
+              resolver = Authorization::PolicyResolver.new(policy_repository)
+              result = resolver.resolve(subject[:id], resource_type: params['resource_type'], action: params['action'])
+              result = result[:data].map { |policy| policy[:definition] } if path.end_with?('/definitions')
+              policy_json(result)
             end
-            resolver = Authorization::PolicyResolver.new(policy_repository)
-            policy_json(resolver.resolve(subject[:id], resource_type: params['resource_type'], action: params['action']))
           end
         end
 

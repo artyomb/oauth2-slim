@@ -12,7 +12,6 @@ ru:
     filter: "Применить фильтры"
     name: "Название"
     description: "Описание"
-    type: "Тип"
     resource_type: "Тип ресурса"
     action: "Действие"
     actions: "Действия"

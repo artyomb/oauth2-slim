@@ -61,14 +61,15 @@ else
     let(:api) { '/api/v1/admin/policies' }
     let(:admin_path) { Authorization::PolicyController::ADMIN_PATH }
     let(:runtime) { '/api/v1/me/policies?resource_type=resource&action=read' }
+    let(:definitions_runtime) { '/api/v1/me/policies/definitions?resource_type=resource&action=read' }
     let(:definition) do
-      { 'example' => { 'values' => ['Юникод'] },
+      { 'example' => { 'type' => 'custom', 'values' => ['Юникод'] },
         'groups_conditions' => [{ 'AND' => [{ 'not' => { 'not' => { 'value' => 1.25 } } }] }],
         'matrices' => [[{ 'values' => [[[37.625, 55.75], [38, 54], [37.625, 55.75]]], 'optional' => nil }]],
         'integer' => 9_007_199_254_740_993 }
     end
     let(:attributes) do
-      { 'name' => 'Test policy', 'type' => 'filter', 'resource_type' => 'resource',
+      { 'name' => 'Test policy', 'resource_type' => 'resource',
         'actions' => ['read'], 'effect' => 'allow', 'definition' => definition }
     end
 
@@ -110,7 +111,9 @@ else
     it 'creates disabled policies and round trips nested JSON, numbers, Unicode, arrays, and nulls' do
       policy = create
       expect(policy).to include('active' => false, 'revision' => 1, 'schema_version' => 1, 'definition' => definition)
-      expect(body(call('GET', "#{api}/#{policy['id']}"))['definition']).to eq(definition)
+      expect(policy.keys & %w[type policy_type]).to be_empty
+      expect(body(call('GET', "#{api}/#{policy['id']}"))).to eq(policy)
+      expect(body(call('GET', api))['data'].first.keys & %w[type policy_type]).to be_empty
     end
 
     it 'persists policies and bindings across a fresh process and repeated migrations' do
@@ -153,7 +156,7 @@ else
     end
 
     it 'rejects invalid API payloads before writing records' do
-      [{ 'definition' => [] }, { 'effect' => 'unknown' }, { 'schema_version' => 2 }, { 'actions' => [] }].each do |changes|
+      [{ 'definition' => [] }, { 'effect' => 'unknown' }, { 'schema_version' => 2 }, { 'actions' => [] }, { 'type' => 'filter' }, { 'policy_type' => 'filter' }].each do |changes|
         expect(call('POST', api, attributes.merge(changes)).status).to eq(422)
       end
       expect(call('POST', api, attributes.merge('definition' => { 'huge' => 'x' * Authorization::Validation.max_bytes })).status).to eq(413)
@@ -201,7 +204,7 @@ else
 
     it 'returns the complete exact matching set beyond the admin page size' do
       28.times do |index|
-        policy = create('active' => true, 'name' => "Policy #{index}", 'priority' => index % 2)
+        policy = create('active' => true, 'name' => "Policy #{index}", 'priority' => index % 2, 'effect' => index.even? ? 'allow' : 'deny', 'definition' => definition.merge('index' => index))
         repository.assign(policy['id'], @alice)
       end
       [ { 'active' => false }, { 'active' => true, 'actions' => ['read:extra'] }, { 'active' => true, 'resource_type' => 'resource-extra' } ].each do |changes|
@@ -213,9 +216,27 @@ else
       result = effective
       expect(result).to include('complete' => true, 'subject' => { 'id' => @alice })
       expect(result['data'].size).to eq(28)
+      expect(result['data'].all? { |policy| (policy.keys & %w[type policy_type]).empty? }).to be(true)
       expect(result['data'].map { |policy| [policy['priority'], policy['id']] }).to eq(result['data'].map { |policy| [policy['priority'], policy['id']] }.sort)
       expect(result['data'].first['assigned_via']).to eq([{ 'type' => 'user', 'id' => @alice }])
       expect(call('GET', runtime, as: @alice)['cache-control']).to include('no-store')
+      definitions = call('GET', definitions_runtime, as: @alice)
+      expect(definitions.status).to eq(200)
+      expect(body(definitions)).to eq(result['data'].map { |policy| policy['definition'] })
+      expect(definitions['cache-control']).to include('no-store')
+    end
+
+    it 'restricts definitions to the authenticated user with exact selectors' do
+      policy = create('active' => true)
+      repository.assign(policy['id'], @alice)
+      expect(body(call('GET', definitions_runtime, as: @alice))).to eq([definition])
+      expect(body(call('GET', definitions_runtime, as: @bob))).to eq([])
+      expect(call('GET', definitions_runtime, as: nil).status).to eq(401)
+      expect(call('GET', '/api/v1/me/policies/definitions', as: @alice).status).to eq(400)
+      expect(call('GET', "#{definitions_runtime}&user_id=#{@bob}", as: @alice).status).to eq(400)
+      expect(call('GET', "#{definitions_runtime}&limit=1", as: @alice).status).to eq(400)
+      FORWARD_AUTH[:revoked?] = -> { true }
+      expect(call('GET', definitions_runtime, as: @alice).status).to eq(401)
     end
 
     it 'cannot redirect /me to another subject and requires selectors' do
@@ -352,17 +373,19 @@ else
 
     it 'never returns success or a partial set when storage fails' do
       allow(repository).to receive(:effective).and_raise(Sequel::DatabaseError, 'private connection data')
-      response = call('GET', runtime, as: @alice)
-      expect(response.status).to eq(503)
-      expect(body(response)).to include('code' => 'storage_failure')
-      expect(response.body).not_to include('private connection data', '"data"', '"complete"')
+      [runtime, definitions_runtime].each do |path|
+        response = call('GET', path, as: @alice)
+        expect(response.status).to eq(503)
+        expect(body(response)).to include('code' => 'storage_failure')
+        expect(response.body).not_to include('private connection data', '"data"', '"complete"')
+      end
     end
 
     it 'provides paginated admin search, filters, user lookup, and binding identities' do
       policy = create('name' => 'Policy 100%', 'active' => true)
       create('name' => 'Other')
       repository.assign(policy['id'], @alice)
-      expect(body(call('GET', "#{api}?search=100%25&active=true&action=read&resource_type=resource&type=filter"))['total']).to eq(1)
+      expect(body(call('GET', "#{api}?search=100%25&active=true&action=read&resource_type=resource"))['total']).to eq(1)
       users = body(call('GET', '/api/v1/admin/policy-users?search=alice&limit=1'))
       expect(users['data']).to eq([{ 'id' => @alice, 'login' => 'alice', 'name' => 'Alice' }])
       bindings = body(call('GET', "#{api}/#{policy['id']}/assignments"))
@@ -479,6 +502,7 @@ else
     it 'explicitly reports non-DB mode as unavailable and leaves service resolution absent' do
       unavailable = Rack::MockRequest.new(UnavailablePolicyApp)
       expect(unavailable.get('/api/v1/me/policies').status).to eq(503)
+      expect(unavailable.get('/api/v1/me/policies/definitions').status).to eq(503)
       expect(unavailable.get(admin_path).status).to eq(503)
       expect(call('POST', '/api/v1/authorization/resolve', { subject: { id: @alice } }).status).to eq(404)
     end

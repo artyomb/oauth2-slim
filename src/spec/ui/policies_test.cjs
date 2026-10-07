@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const policy = { id: 1, name: 'Existing policy', description: '', type: 'filter', resource_type: 'resource', actions: ['read'], effect: 'allow', priority: 0, active: false, schema_version: 1, definition: { saved: true }, revision: 1, assignment_count: 0, updated_at: '2026-10-07T00:00:00Z' };
+const policy = { id: 1, name: 'Existing policy', description: '', resource_type: 'resource', actions: ['read'], effect: 'allow', priority: 0, active: false, schema_version: 1, definition: { saved: true }, revision: 1, assignment_count: 0, updated_at: '2026-10-07T00:00:00Z' };
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const reply = (value, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(value) });
 function deferred() {
@@ -85,7 +85,7 @@ test('duplicating blocks navigation and creates a disabled policy without copyin
   assert.equal(app.get('policy-new').disabled, true);
   const body = JSON.parse(app.requests.find(request => request.method === 'POST').body);
   assert.equal(body.active, false);
-  assert.equal(body.type, 'filter');
+  assert.equal('type' in body, false);
   assert.equal(body.schema_version, 1);
   assert.equal('assignment_count' in body, false);
   pending.resolve(reply({ ...policy, id: 2, name: body.name }));
@@ -129,7 +129,7 @@ test('failed saves preserve edits and unlock controls for retry', async () => {
   assert.equal(app.get('policy-message').textContent, 'Storage unavailable');
   const body = JSON.parse(app.requests.find(request => request.method === 'PATCH').body);
   assert.equal(body.name, 'Unsaved edit');
-  assert.equal(body.type, 'filter');
+  assert.equal('type' in body, false);
   assert.equal(body.schema_version, 1);
 });
 
@@ -144,4 +144,16 @@ test('editing metadata preserves existing exact action names when the action fie
   const body = JSON.parse(app.requests.find(request => request.method === 'PATCH').body);
   assert.deepEqual(body.actions, existing.actions);
   assert.equal(body.description, 'Metadata edit');
+});
+
+test('new policies save with a resource type and no fixed policy type', async () => {
+  const app = await ui((url, options) => options.method === 'POST' ? reply({ ...policy, id: 2, name: 'New policy' }, 201) : undefined);
+  await app.get('policy-new').onclick();
+  app.form.elements.name.value = 'New policy';
+  app.submit();
+  await tick();
+  const body = JSON.parse(app.requests.find(request => request.method === 'POST').body);
+  assert.equal(body.resource_type, 'resource');
+  assert.equal('type' in body, false);
+  assert.equal(app.get('policy-message').textContent, 'saved');
 });

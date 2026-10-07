@@ -6,7 +6,7 @@ require_relative '../../authorization/same_origin'
 
 RSpec.describe Authorization::Validation do
   let(:input) do
-    { 'name' => 'Policy', 'type' => 'filter', 'resource_type' => 'resource',
+    { 'name' => 'Policy', 'resource_type' => 'resource',
       'actions' => ['read'], 'effect' => 'allow', 'definition' => { 'matrices' => [[[1.2, -4.5], [8, 2]]] } }
   end
 
@@ -22,7 +22,7 @@ RSpec.describe Authorization::Validation do
 
   it 'rejects invalid metadata and non-object definitions' do
     { 'name' => '', 'resource_type' => '', 'actions' => [], 'effect' => 'maybe', 'active' => 'false',
-      'priority' => '1', 'type' => 'unknown', 'schema_version' => 1.0, 'definition' => [] }.each do |field, value|
+      'priority' => '1', 'schema_version' => 1.0, 'definition' => [] }.each do |field, value|
       expect { described_class.policy(input.merge(field => value)) }.to raise_error(Authorization::Error) { |e| expect(e.fields).to have_key(field) }
     end
   end
@@ -41,6 +41,10 @@ RSpec.describe Authorization::Validation do
 
   it 'does not allow request control fields or IDs to become policy content' do
     expect { described_class.policy(input.merge('id' => 2)) }.to raise_error(Authorization::Error)
+    %w[type policy_type].each do |key|
+      expect { described_class.policy(input.merge(key => 'filter')) }.to raise_error(Authorization::Error, "Unknown fields: #{key}")
+      expect { described_class.policy({ key => 'filter' }, partial: true) }.to raise_error(Authorization::Error, "Unknown fields: #{key}")
+    end
     expect(described_class.policy({ 'expected_revision' => 2, 'definition' => {} }, partial: true)).to eq(definition: {})
   end
 
@@ -61,7 +65,7 @@ RSpec.describe Authorization::SameOrigin do
     app = ->(_) { [200, { 'access-control-allow-origin' => 'https://attacker.test', 'Access-Control-Allow-Credentials' => 'true' }, ['ok']] }
     %w[/admin/policies /map/admin/policies].each do |admin_path|
       middleware = described_class.new(app, admin_path:)
-      [admin_path, "#{admin_path}/data/1", "#{admin_path}/users", '/api/v1/me/policies', '/api/v1/admin/policies/1', '/api/v1/admin/policy-users'].each do |path|
+      [admin_path, "#{admin_path}/data/1", "#{admin_path}/users", '/api/v1/me/policies', '/api/v1/me/policies/definitions', '/api/v1/admin/policies/1', '/api/v1/admin/policy-users'].each do |path|
         headers = middleware.call('PATH_INFO' => path)[1]
         expect(headers.keys.grep(/access-control/i)).to be_empty
         expect(headers['cache-control']).to eq('no-store')

@@ -112,7 +112,7 @@
       $('policy-rows').replaceChildren();
       page.data.forEach((policy) => {
         const row = node('tr');
-        const values = { name: policy.name, type: policy.type, resource_type: policy.resource_type, actions: policy.actions.join(', '), effect: text(policy.effect), state: text(policy.active ? 'enabled' : 'disabled'), priority: policy.priority, assignments: policy.assignment_count, updated: new Date(policy.updated_at).toLocaleString() };
+        const values = { name: policy.name, resource_type: policy.resource_type, actions: policy.actions.join(', '), effect: text(policy.effect), state: text(policy.active ? 'enabled' : 'disabled'), priority: policy.priority, assignments: policy.assignment_count, updated: new Date(policy.updated_at).toLocaleString() };
         Object.entries(values).forEach(([key, value]) => {
           const cell = node('td'); cell.dataset.label = text(key);
           if (key === 'effect' || key === 'state') cell.append(node('span', value, `policy-badge ${key === 'effect' ? policy.effect : ''}`));
@@ -174,7 +174,7 @@
       throw new Error(text('invalid_json'));
     }
   }
-  function content(policy) { return { ...Object.fromEntries(fields.map((key) => [key, policy[key]])), type: policy.type, schema_version: policy.schema_version }; }
+  function content(policy) { return { ...Object.fromEntries(fields.map((key) => [key, policy[key]])), schema_version: policy.schema_version }; }
   async function confirmState(policy) {
     const page = await request(`${api}/${policy.id}/assignments?limit=25`);
     let description = text('state_confirm', { count: page.total });
@@ -249,7 +249,7 @@
       const values = Object.fromEntries(new FormData(form));
       values.active = form.elements.active.checked;
       values.priority = Number(values.priority);
-      values.type = state.policy.type; values.schema_version = state.policy.schema_version;
+      values.schema_version = state.policy.schema_version;
       values.actions = values.actions === form.elements.actions.defaultValue ? state.policy.actions : values.actions.split(',').map((value) => value.trim()).filter(Boolean);
       values.definition = definition();
       await edit(async () => {
@@ -263,7 +263,7 @@
     }, $('policy-save'));
   });
   $('policy-new').onclick = () => run(() => edit(async () => {
-    fill({ name: '', description: '', type: 'filter', resource_type: 'resource', actions: ['read'], effect: 'allow', active: false, priority: 0, schema_version: 1, definition: {} }); message();
+    fill({ name: '', description: '', resource_type: 'resource', actions: ['read'], effect: 'allow', active: false, priority: 0, schema_version: 1, definition: {} }); message();
   }, true));
   $('policy-back').onclick = () => run(() => edit(async () => {
     dirty(false); $('policy-editor').hidden = true; $('policy-list').hidden = false; message(); await loadList();

@@ -30,9 +30,7 @@ module Authorization
     def list(params)
       dataset = @model.select(*(@model.columns - [:definition]))
       dataset = dataset.where(Sequel.ilike(:name, "%#{dataset.escape_like(params['search'])}%")) if params['search'].is_a?(String) && !params['search'].empty?
-      { 'type' => :policy_type, 'resource_type' => :resource_type }.each do |key, column|
-        dataset = dataset.where(column => Validation.selector(params[key], key)) if params.key?(key) && params[key] != ''
-      end
+      dataset = dataset.where(resource_type: Validation.selector(params['resource_type'], 'resource_type')) if params.key?('resource_type') && params['resource_type'] != ''
       if params.key?('active') && params['active'] != ''
         raise Error.new('active must be true or false', status: 400) unless %w[true false].include?(params['active'])
 
@@ -49,7 +47,7 @@ module Authorization
     end
 
     def create(attributes)
-      serialize(@model.create(attributes))
+      serialize(@model.create(attributes.merge(policy_type: 'filter')))
     end
 
     def update(id, attributes, expected_revision:)
@@ -138,7 +136,7 @@ module Authorization
 
     def serialize(record)
       values = record.values.dup
-      values[:type] = values.delete(:policy_type)
+      values.delete(:policy_type)
       values[:actions] = values[:actions].to_a
       values[:definition] = values[:definition].to_h if values.key?(:definition)
       %i[created_at updated_at].each { |field| values[field] = values[field].iso8601(6) }

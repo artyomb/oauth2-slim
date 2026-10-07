@@ -13,7 +13,7 @@ module Authorization
   end
 
   class Validation
-    FIELDS = %w[name description type resource_type actions effect active priority definition schema_version].freeze
+    FIELDS = %w[name description resource_type actions effect active priority definition schema_version].freeze
     DEFAULTS = { 'description' => '', 'active' => false, 'priority' => 0, 'schema_version' => 1 }.freeze
 
     def self.max_bytes = Integer(ENV.fetch('POLICY_MAX_PAYLOAD_BYTES', '262144'))
@@ -36,7 +36,7 @@ module Authorization
       if data.key?('description') && (!data['description'].is_a?(String) || data['description'].length > 4000)
         errors['description'] = 'Must be a string of at most 4000 characters'
       end
-      { 'type' => ['filter'], 'effect' => %w[allow deny], 'active' => [true, false], 'schema_version' => [1] }.each do |key, values|
+      { 'effect' => %w[allow deny], 'active' => [true, false], 'schema_version' => [1] }.each do |key, values|
         next if partial && !data.key?(key)
 
         errors[key] = "Must be one of: #{values.join(', ')}" unless values.include?(data[key])
@@ -67,7 +67,7 @@ module Authorization
       raise Error.new('Policy validation failed', fields: errors) unless errors.empty?
       raise Error.new("Policy must not exceed #{max_bytes} bytes", fields: { body: 'Payload too large' }) if JSON.generate(data).bytesize > max_bytes
 
-      data.transform_keys { |key| key == 'type' ? :policy_type : key.to_sym }
+      data.transform_keys(&:to_sym)
     end
 
     def self.null_character?(value)
