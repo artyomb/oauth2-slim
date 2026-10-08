@@ -10,6 +10,20 @@ Only `/auth/ceph` returns `X-Access-Token`. The generic endpoints deliberately d
 
 Only attach `/auth/optional` to routes and HTTP methods that are intentionally accessible without authentication. The upstream application remains responsible for authorization of modifications and personalized responses.
 
+## Optional signed request assertions
+
+`AUTH_JWT_ENABLED` defaults to `true`, making generic per-request `X-AUTH-JWT`
+assertions and a public-key endpoint available when `AUTH_SCOPE` is configured.
+Existing endpoints keep their previous authentication contracts without new environment
+variables. Missing `AUTH_SCOPE` leaves only the new endpoints inactive; set
+`AUTH_JWT_ENABLED=false` to disable them explicitly.
+Each consumer supplies its audience through its own Traefik configuration; adding
+services requires no oauth2-slim reconfiguration.
+
+See [setup, reference Rack middleware, replay protection, and tests](docs/auth-jwt.md).
+The copyable validator is `src/examples/auth_jwt_middleware.rb`; consumer installation
+and deployment are explicit separate steps.
+
 # Policy management
 
 Database user mode (`USERS_DB_URL`) includes policy management at `/admin/policies`,

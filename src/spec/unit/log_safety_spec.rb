@@ -49,6 +49,16 @@ RSpec.describe LogSafety do
   end
 
   describe ".redact_text" do
+    it "redacts assertion headers in structured data and free text" do
+      %w[X-AUTH-JWT x-auth-jwt HTTP_X_AUTH_JWT].each do |name|
+        expect(described_class.redact_hash(name => 'signed-secret')[name]).to eq(described_class::REDACTED)
+        expect(described_class.redact_text("#{name}: signed-secret")).not_to include('signed-secret')
+        expect(described_class.redact_text("#{name}=signed-secret")).not_to include('signed-secret')
+        expect(described_class.redact_text(%({"#{name}":"signed-secret"}))).not_to include('signed-secret')
+        expect(described_class.redact_text({ name => 'signed-secret' }.inspect)).not_to include('signed-secret')
+      end
+    end
+
     it "redacts free-text secrets" do
       redacted = described_class.redact_text("Authorization: Bearer token123 client_secret=top Cookie: auth_token=cookie123")
 

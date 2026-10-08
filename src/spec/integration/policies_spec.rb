@@ -108,6 +108,57 @@ else
 
     def effective = body(call('GET', runtime, as: @alice))
 
+    def assertion_response(access_token, revocation: 'false')
+      script = <<~'RUBY'
+        require 'logger'
+        require 'rack/mock'
+        require 'sinatra/base'
+        LOGGER = Logger.new(File::NULL)
+        require_relative 'auth/auth_forward'
+        class AssertionDatabaseApp < Sinatra::Base
+          set :environment, :test
+          set :raise_errors, true
+          set :show_exceptions, false
+          helpers AuthForward
+        end
+        FORWARD_AUTH[:revoked?] = case ENV.fetch('ASSERTION_TEST_REVOCATION')
+                                 when 'true' then -> { decode_token(get_token)['sub'].to_s != '' }
+                                 when 'error' then -> { raise 'Revocation unavailable' }
+                                 else -> { false }
+                                 end
+        response = Rack::MockRequest.new(AssertionDatabaseApp).get(
+          '/auth/assertion?aud=insight', 'HTTP_COOKIE' => "#{COOKIE_TOKEN_NAME}=#{ENV.fetch('ASSERTION_TEST_COOKIE')}",
+          'HTTP_X_FORWARDED_METHOD' => 'GET', 'HTTP_X_FORWARDED_URI' => '/private'
+        )
+        assertion = response['X-AUTH-JWT']
+        puts JSON.generate(status: response.status, claims: assertion && JWT.decode(assertion, nil, false).first)
+      RUBY
+      output, error, status = Open3.capture3({
+        'USERS_DB_URL' => ENV.fetch('POLICY_TEST_DATABASE_URL'), 'DB_USER_SEED' => 'false',
+        'AUTH_JWT_ENABLED' => 'true', 'AUTH_SCOPE' => 'auth.test', 'RACK_ENV' => 'test',
+        'ASSERTION_TEST_COOKIE' => access_token, 'ASSERTION_TEST_REVOCATION' => revocation
+      }, 'bundle', 'exec', 'ruby', '-e', script, chdir: File.expand_path('../..', __dir__))
+      expect(status.success?).to be(true), error
+      JSON.parse(output)
+    end
+
+    it 'signs the current database role rather than the stale session role' do
+      access_token = token(@admin)
+      DB[:oauth_users].where(id: @admin).update(role: 'viewer')
+      response = assertion_response(access_token)
+      expect(response['status']).to eq(200)
+      expect(response['claims']).to include('sub' => @admin.to_s, 'role' => 'viewer', 'aud' => 'insight')
+    end
+
+    it 'refuses assertion issuance for deleted, inconsistent, or revoked database users' do
+      access_token = token(@admin)
+      expect(assertion_response(token(@admin, uid: @bob))['status']).to eq(401)
+      expect(assertion_response(access_token, revocation: 'true')).to include('status' => 401, 'claims' => nil)
+      expect(assertion_response(access_token, revocation: 'error')).to include('status' => 503, 'claims' => nil)
+      DB[:oauth_users].where(id: @admin).update(deleted_at: Time.now)
+      expect(assertion_response(access_token)).to include('status' => 401, 'claims' => nil)
+    end
+
     it 'creates disabled policies and round trips nested JSON, numbers, Unicode, arrays, and nulls' do
       policy = create
       expect(policy).to include('active' => false, 'revision' => 1, 'schema_version' => 1, 'definition' => definition)

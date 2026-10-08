@@ -46,6 +46,19 @@ RSpec.describe TelegramAuth do
 
   after { AUTH_CODES.clear }
 
+  it "preserves legacy authentication with no assertion configuration" do
+    expect(TelegramAuthSpecApp.request_assertion).to be_a(OAuthSlim::RequestAssertion)
+    token = signed_token
+    authenticated = forward_auth_request('/auth', token:)
+    expect(authenticated.status).to eq(200)
+    expect(authenticated['X-AuthSlim']).to eq('authorized')
+    expect(JSON.parse(authenticated['X-Token'])['login']).to eq('alice')
+    expect(authenticated['X-AUTH-JWT']).to be_nil
+    expect(optional_auth_request.status).to eq(200)
+    expect(ceph_auth_request(token:)['X-Access-Token']).to eq(token)
+    expect(request.get('/.well-known/auth-jwks.json').status).to eq(200)
+  end
+
   it "starts authorization through the Telegram authorization endpoint" do
     response = request.get(
       "/auth",
@@ -161,6 +174,105 @@ RSpec.describe TelegramAuth do
       "HTTP_X_FORWARDED_URI" => forwarded_callback_uri
     )
     expect(replay.status).to eq(404)
+  end
+
+  describe "signed request assertions" do
+    around do |example|
+      signer = TelegramAuthSpecApp.request_assertion
+      strategy = FORWARD_AUTH[:method]
+      TelegramAuthSpecApp.set :request_assertion, OAuthSlim::RequestAssertion.new(issuer: 'app.test')
+      example.run
+    ensure
+      TelegramAuthSpecApp.set :request_assertion, signer
+      FORWARD_AUTH[:method] = strategy
+    end
+
+    def assertion_request(query = 'aud=insight', **options)
+      forward_auth_request("/auth/assertion?#{query}", headers: { 'HTTP_X_FORWARDED_METHOD' => 'GET',
+                                                                'HTTP_X_AUTH_JWT' => 'forged-assertion' }, **options)
+    end
+
+    it "issues a fresh assertion for each authenticated request and any new service audience" do
+      first = assertion_request(token: signed_token(role: 'admin'))
+      second = assertion_request('aud=new-service', token: signed_token(role: 'admin'))
+      expect([first.status, second.status]).to eq([200, 200])
+      first_claims = JWT.decode(first['X-AUTH-JWT'], nil, false).first
+      second_claims = JWT.decode(second['X-AUTH-JWT'], nil, false).first
+      expect(first_claims).to include('sub' => 'alice', 'role' => 'admin', 'aud' => 'insight', 'iss' => 'app.test')
+      expect(second_claims['aud']).to eq('new-service')
+      expect(first_claims['jti']).not_to eq(second_claims['jti'])
+      expect(first['cache-control']).to include('no-store')
+      expect(first['X-AuthSlim']).to eq('authorized')
+    end
+
+    it "preserves login redirects and callback queries without minting an assertion" do
+      response = assertion_request('aud=insight&strip_prefix=%2Finsight', forwarded_uri: '/insight/private?aud=client&x=1&x=2')
+      expect(response.status).to eq(302)
+      expect(response['X-AUTH-JWT']).to be_nil
+      query = URI.decode_www_form(URI.parse(response['location']).query).to_h
+      expect(query['redirect_uri']).to eq('https://app.test/insight/private')
+      expect(Base64.urlsafe_decode64(query['state'])).to eq('aud=client&x=1&x=2')
+      AUTH_CODES['assertion-callback'] = { uid: 42, login: 'alice', role: 'admin', time: Time.now.to_i }
+      state = Base64.urlsafe_encode64('aud=client&x=1&x=2')
+      callback = assertion_request('aud=insight&strip_prefix=%2Finsight',
+                                   forwarded_uri: "/insight/private?code=assertion-callback&state=#{state}")
+      expect(callback.status).to eq(302)
+      expect(callback['X-AUTH-JWT']).to be_nil
+      expect(callback['location']).to eq('https://app.test/insight/private?aud=client&x=1&x=2')
+      expect(auth_cookie?(callback)).to be(true)
+    end
+
+    it "does not sign invalid, expired, or revoked authentication and fails closed on revocation errors" do
+      ['bad-token', signed_token(exp: Time.now.to_i - 1)].each do |token|
+        response = assertion_request(token:)
+        expect(response.status).to eq(302)
+        expect(response['X-AUTH-JWT']).to be_nil
+      end
+      FORWARD_AUTH[:revoked?] = -> { decode_token(get_token)['login'] == 'alice' }
+      expect(assertion_request(token: signed_token)['X-AUTH-JWT']).to be_nil
+      FORWARD_AUTH[:revoked?] = -> { raise 'revocation unavailable' }
+      failed = assertion_request(token: signed_token)
+      expect(failed.status).to eq(503)
+      expect(failed['X-AUTH-JWT']).to be_nil
+      expect(failed['X-Token']).to be_nil
+    end
+
+    it "requires a verified principal from a custom authentication strategy" do
+      FORWARD_AUTH[:method] = -> { headers['X-AuthSlim'] = 'authorized' }
+      expect(assertion_request.status).to eq(401)
+      FORWARD_AUTH[:method] = -> { { sub: 'custom-user', role: 'admin', exp: Time.now.to_i + 60 } }
+      response = assertion_request
+      expect(response.status).to eq(200)
+      expect(JWT.decode(response['X-AUTH-JWT'], nil, false).first['sub']).to eq('custom-user')
+    end
+
+    it "rejects invalid controls before issuing credentials" do
+      response = assertion_request('aud=insight&aud=other', token: signed_token)
+      expect(response.status).to eq(400)
+      expect(response['X-AUTH-JWT']).to be_nil
+      expect(response['X-Token']).to be_nil
+    end
+
+    it "does not reflect assertion headers through legacy strict or optional endpoints" do
+      %w[/auth /auth/optional /auth/ceph].each do |path|
+        response = forward_auth_request(path, token: signed_token, headers: { 'HTTP_X_AUTH_JWT' => 'forged' })
+        expect(response['X-AUTH-JWT']).to be_nil
+      end
+    end
+
+    it "publishes only public assertion keys and supports conditional discovery" do
+      response = request.get('/.well-known/auth-jwks.json')
+      expect(response.status).to eq(200)
+      metadata = JSON.parse(response.body)
+      expect(metadata['issuer']).to eq('app.test')
+      expect(metadata['keys'].size).to eq(1)
+      expect(metadata['keys'].first).not_to have_key('d')
+      expect(metadata['keys'].first['x']).not_to eq(Base64.urlsafe_encode64(SIGNING_KEY.verify_key.to_bytes, padding: false))
+      expect(request.get('/.well-known/auth-jwks.json', 'HTTP_IF_NONE_MATCH' => response['etag']).status).to eq(304)
+      TelegramAuthSpecApp.set :request_assertion, nil
+      expect(assertion_request(token: signed_token).status).to eq(404)
+      expect(request.get('/.well-known/auth-jwks.json').status).to eq(404)
+    end
   end
 
   describe "GET /auth/optional" do

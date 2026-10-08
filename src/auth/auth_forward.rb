@@ -8,6 +8,7 @@ require 'faraday'
 require 'rack/utils'
 require_relative 'authorization_code'
 require_relative 'token'
+require_relative 'request_assertion'
 
 $stdout.sync=true
 FORWARD_AUTH = {}
@@ -26,7 +27,7 @@ FORWARD_AUTH = {}
 def forward_auth(&block)
   FORWARD_AUTH[:method] = lambda do
     LOGGER.debug 'Custom forward_auth method'
-    instance_exec &block
+    instance_exec(&block)
   rescue => e
     LOGGER.error "Error in Custom forward_auth method: #{LogSafety.exception_message(e)}"
     halt 401, 'Unauthorized'
@@ -35,7 +36,7 @@ end
 
 def revoked?(&block)
   FORWARD_AUTH[:revoked?] = lambda do
-    instance_exec &block
+    instance_exec(&block)
   rescue => e
     LOGGER.error "Error in is_revoked?: #{LogSafety.exception_message(e)}"
     raise
@@ -43,13 +44,14 @@ def revoked?(&block)
 end
 
 module AuthForward
-  OWNED_IDENTITY_HEADERS = %w[x-access-token x-authslim x-token].freeze
+  OWNED_IDENTITY_HEADERS = %w[x-access-token x-authslim x-token x-auth-jwt].freeze
 
   require_relative '../custom/forward_auth.rb' if File.exist?("#{__dir__}/../custom/forward_auth.rb")
 
   def self.included(base)
     base.class_eval do
       helpers Token, AuthorizationCode
+      set :request_assertion, OAuthSlim::RequestAssertion.from_env
 
       if ENV['USERS_DB_URL'].to_s != '' && FORWARD_AUTH[:method].nil?
         LOGGER.info 'DBUserAuth'
@@ -173,7 +175,8 @@ module AuthForward
         redirect full_uri_short + state_q
       end
 
-      def handle_forward_auth_request(optional:, expose_access_token: false)
+      def handle_forward_auth_request(optional:, expose_access_token: false, assertion: nil)
+        headers.delete 'X-AUTH-JWT'
         if expose_access_token && ceph_logout_request?
           LOGGER.info 'Ceph logout intercepted'
           logout
@@ -187,13 +190,21 @@ module AuthForward
 
         access_token = get_token
         authenticated = valid_token?(access_token)
-        authenticated &&= !FORWARD_AUTH[:revoked?].call
+        if assertion
+          authenticated &&= !instance_exec(&FORWARD_AUTH[:revoked?]) unless respond_to?(:authenticated_db_user)
+        else
+          authenticated &&= !FORWARD_AUTH[:revoked?].call
+        end
         authenticated &&= ceph_access_token?(access_token) if expose_access_token
         if authenticated
           LOGGER.info 'AUTH TOKEN VALID'
           forward_incoming_headers
           headers['X-AuthSlim'] = 'authorized'
           headers['X-Access-Token'] = access_token if expose_access_token
+          if assertion
+            principal = assertion_principal(access_token)
+            headers['X-AUTH-JWT'] = settings.request_assertion.issue(principal:, **assertion)
+          end
           return status 200
         end
 
@@ -206,10 +217,45 @@ module AuthForward
           return status 200
         end
 
-        instance_exec &FORWARD_AUTH[:method]
+        principal = instance_exec(&FORWARD_AUTH[:method])
+        if assertion
+          raise OAuthSlim::RequestAssertion::InvalidIdentity, 'Authentication revoked' if instance_exec(&FORWARD_AUTH[:revoked?])
+
+          headers['X-AUTH-JWT'] = settings.request_assertion.issue(principal:, **assertion)
+        end
         forward_incoming_headers
         headers['X-AuthSlim'] = 'authorized'
         LOGGER.info 'Authorization successful'
+      end
+
+      def assertion_principal(access_token)
+        if respond_to?(:authenticated_db_user)
+          claims = nil
+          user = authenticated_db_user(access_token) { |verified| claims = verified }
+          attributes = token_attributes(user)
+          { 'sub' => attributes.fetch(:uid).to_s, 'role' => attributes.fetch(:role, ''), 'exp' => claims.fetch('exp') }
+        else
+          claims = decode_token(access_token)
+          claims.merge('sub' => (claims['sub'] || claims['uid'] || claims['login']).to_s)
+        end
+      end
+
+      def handle_assertion_request
+        halt 404 unless settings.request_assertion
+
+        cache_control :no_store
+        metadata = OAuthSlim::RequestAssertion.request_metadata(request.env)
+        handle_forward_auth_request(optional: false, assertion: metadata)
+      rescue OAuthSlim::RequestAssertion::InvalidRequest
+        OWNED_IDENTITY_HEADERS.each { |name| headers.delete(name) }
+        halt 400, 'Invalid assertion request'
+      rescue OAuthSlim::RequestAssertion::InvalidIdentity, JWT::DecodeError
+        OWNED_IDENTITY_HEADERS.each { |name| headers.delete(name) }
+        halt 401, 'Unauthorized'
+      rescue StandardError => error
+        OWNED_IDENTITY_HEADERS.each { |name| headers.delete(name) }
+        LOGGER.error "Assertion authentication failed: #{LogSafety.exception_message(error)}"
+        halt 503, 'Authentication unavailable'
       end
 
       def logout
@@ -240,6 +286,17 @@ module AuthForward
       get('/auth') { handle_forward_auth_request(optional: false) }
       get('/auth/ceph') { handle_forward_auth_request(optional: false, expose_access_token: true) }
       get('/auth/optional') { handle_forward_auth_request(optional: true) }
+      get('/auth/assertion') { handle_assertion_request }
+
+      get '/.well-known/auth-jwks.json' do
+        halt 404 unless settings.request_assertion
+
+        body = JSON.generate(settings.request_assertion.jwks)
+        content_type :json
+        cache_control :public, max_age: 30, must_revalidate: true
+        etag Digest::SHA256.hexdigest(body)
+        body
+      end
 
       get('/oauth2/sign_out') do
         logout

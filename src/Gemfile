@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 ruby File.read(File.dirname(__FILE__)+'/.ruby-version').strip
 
 gem 'async-io' # -> gem 'console'
-gem 'json'
+gem 'json', '>= 2.18'
 gem 'rest-client'
 gem 'falcon'
 
@@ -24,6 +24,8 @@ gem 'ed25519'
 gem 'jwt-eddsa'
 
 gem 'faraday'
+gem 'faraday-retry', '~> 2.4'
+gem 'faraday-net_http_persistent', '~> 2.3'
 
 gem 'stack-service-base'
 #, path: '/home/user/projects/stack-service-base'

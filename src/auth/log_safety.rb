@@ -9,6 +9,7 @@ module LogSafety
     /password|passwd|pwd/,
     /secret/,
     /token/,
+    /jwt/,
     /\Acode\z/,
     /\A(?:state|nonce)\z/,
     /signing.*key|private.*key|\Akey\z/
@@ -51,6 +52,7 @@ module LogSafety
       text.gsub!(/((?:access_token|refresh_token|id_token|client_secret|password|token|secret|code|state|nonce)=)[^&\s]+/i, "\\1#{REDACTED}")
       text.gsub!(/(Bearer\s+)[A-Za-z0-9._~+\/=-]+/i, "\\1#{REDACTED}")
       text.gsub!(/((?:Authorization|Cookie|Set-Cookie):\s*)[^\n]+/i, "\\1#{REDACTED}")
+      text.gsub!(/((?:HTTP[_-])?X[_-]AUTH[_-]JWT["']?\s*(?::|=>|=)\s*["']?)[^"'\s,;}]+/i, "\\1#{REDACTED}")
       text
     end
 
