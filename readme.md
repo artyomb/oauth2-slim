@@ -1,3 +1,8 @@
+# Login branding
+
+Password login supports a configurable app name, logo, colors, localized text,
+default language, and build-label visibility. See [settings and the OPT example](docs/login-branding.md).
+
 # Traefik ForwardAuth
 
 - `GET /auth` is strict: a missing, invalid, expired, or revoked auth cookie starts authorization.

@@ -19,25 +19,19 @@ require_relative 'authorization/same_origin'
 use Authorization::SameOrigin, admin_path: Authorization::PolicyController::ADMIN_PATH
 StackServiceBase.rack_setup self
 
-enable :sessions
-
-before do
-  I18n.locale = session[:locale] || I18n.default_locale
-end
+register LocaleSupport
 
 helpers Auth20, AuthForward, OpenIDConnect
 set :policy_repository, Authorization::PolicyRepository.new(DB) if defined?(OAuthUser) && defined?(DB)
 helpers Authorization::PolicyController
-helpers do
-  def t(key, options = {}) = I18n.t(key, **options)
-end
 
 not_found { '404 page' }
 
 get '/', &-> { slim :index }
 get '*favicon.ico', &-> { '' }
 get %r{.*/locale/(.*)} do |locale|
-  session[:locale] = locale.to_sym if I18n.available_locales.include?(locale.to_sym)
+  selected = supported_locale(locale)
+  session[:locale] = selected if selected
   redirect back
 end
 

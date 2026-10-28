@@ -1,138 +1,382 @@
+- @login_branding = LoginBranding.config
 sass:
-  .login-container
-    display: flex
-    align-items: center;
-    justify-content: center
-    flex-direction: column;
-    min-height: auto
-    padding: var(--space-xl) 0
-    background: var(--color-background)
+  .password-login-page
+    --color-primary: #0b70f5
+    --color-text: #0b102b
+    --color-text-muted: #626c86
+    --color-background: #f6faff
+    --color-background-card: #fff
+    --color-border: #d5d9e4
+    --login-primary-hover: #075ed2
+    --login-primary-text: #fff
+    --login-space-xs: 8px
+    --login-space-sm: 12px
+    --login-space-md: 16px
+    --login-space-lg: 24px
+    --login-space-xl: 32px
+    --login-space-2xl: 40px
+    --login-control-radius: 6px
+    --login-control-height: 40px
+    --login-toggle-size: 32px
+    --login-toggle-inset: 4px
+    --login-icon-size: 18px
+    --login-icon-color: #65676a
+    --login-accent-soft: color-mix(in srgb, var(--color-primary) 8%, transparent)
+    min-height: 100vh
+    min-height: 100svh
+    background-color: var(--color-background)
+    background-image: radial-gradient(ellipse at 50% 44%, var(--login-accent-soft), transparent 68%)
 
-  .login-card
-    background: var(--color-background-card)
-    border: var(--border-width) solid var(--color-border)
-    border-radius: var(--border-radius-md)
-    padding: var(--space-3xl)
-    max-width: 400px
-    width: 100%
-    text-align: center
-    box-shadow: var(--shadow-sm)
-    margin: 0 auto
+    &.custom-palette
+      --login-palette-text: color-mix(in srgb, var(--color-primary) 20%, #202020)
+      --color-background: color-mix(in srgb, var(--color-primary) 3.5%, white)
+      --color-text: var(--login-palette-text)
+      --color-text-muted: color-mix(in srgb, var(--login-palette-text) 80%, white)
+      --color-border: color-mix(in srgb, var(--login-palette-text) 16%, white)
+      --login-primary-hover: color-mix(in srgb, var(--color-primary) 85%, black)
 
-  .login-card h1
-    font-size: var(--font-size-2xl)
-    font-weight: var(--font-weight-normal)
-    margin-bottom: var(--space-sm)
-    color: var(--color-text)
+      @supports (color: contrast-color(red))
+        --login-auto-text: contrast-color(var(--color-primary))
+        --login-primary-text: var(--login-auto-text)
+        --login-primary-hover: color-mix(in srgb, var(--color-primary) 85%, contrast-color(var(--login-auto-text)))
 
-  .login-subtitle
-    color: var(--color-text-muted)
-    margin-bottom: var(--space-xl)
+    .app-container
+      height: auto
+      min-height: 100vh
+      min-height: 100svh
 
-  .locale-switch
+  .login-header
     display: flex
     align-items: center
-    justify-content: center
-    gap: 0
-    font-size: var(--font-size-xs)
-    font-weight: var(--font-weight-medium)
-    margin-bottom: 24px
+    justify-content: space-between
+    gap: var(--login-space-lg)
+    width: calc(100% - clamp(48px, 19vw, 192px))
+    max-width: 1100px
+    margin: var(--login-space-lg) auto 0
+    min-height: var(--login-space-xl)
 
-  .locale-link
-    padding: var(--space-xs) var(--space-sm)
-    color: var(--color-text-muted)
-    text-decoration: none
-    text-transform: uppercase
-    transition: color var(--transition-fast)
-    position: relative
-
-  .locale-link:hover
+  .login-brand
+    display: flex
+    align-items: center
+    gap: var(--login-space-sm)
+    min-width: 0
     color: var(--color-text)
-
-  .locale-link.active
-    color: var(--color-primary)
+    font-size: var(--font-size-xl)
     font-weight: var(--font-weight-medium)
+    line-height: 1.2
+    overflow-wrap: anywhere
 
-  .locale-link.active::after
-    content: ''
-    position: absolute
-    bottom: 1px
-    left: 50%
-    transform: translateX(-50%)
-    width: 20px
-    height: 2px
-    background: var(--color-primary)
-    border-radius: 1px
-
-  .form-group
-    margin-bottom: var(--space-md)
-    text-align: left
-
-  .form-group label
+  .login-logo
     display: block
-    color: var(--color-text)
-    margin-bottom: var(--space-xs)
+    width: var(--login-icon-size)
+    height: var(--login-icon-size)
+    object-fit: contain
+    flex-shrink: 0
+    color: var(--color-primary)
 
-  .form-input
-    box-sizing: border-box
-    width: 100%
-    padding: var(--space-sm)
-    border: var(--border-width) solid var(--color-border)
-    border-radius: var(--border-radius-sm)
-    font-size: var(--font-size-base)
-    background: var(--color-background-card)
-    color: var(--color-text)
+  .login-logo--custom
+    width: var(--login-space-xl)
+    height: var(--login-space-xl)
 
-  .login-btn
+  .login-languages
+    display: flex
+    align-items: center
+    gap: var(--login-space-lg)
+    flex-shrink: 0
+
+  .login-language
+    position: relative
     display: inline-flex
     align-items: center
     justify-content: center
+    min-width: 38px
+    min-height: var(--login-space-xl)
+    padding: 4px var(--login-space-xs)
+    border-radius: var(--login-control-radius)
+    color: var(--color-text-muted)
+    font-size: var(--font-size-sm)
+    font-weight: var(--font-weight-medium)
+    line-height: 1
+    text-decoration: none
+
+    & + .login-language::before
+      content: ''
+      position: absolute
+      left: -12px
+      top: 25%
+      height: 50%
+      width: 1px
+      background: var(--color-border)
+
+    &:hover
+      color: var(--color-primary)
+
+    &[aria-current]
+      color: var(--color-primary)
+      background: var(--login-accent-soft)
+
+  .login-content
     width: 100%
-    padding: var(--space-md) var(--space-xl)
+    display: flex
+    align-items: center
+    flex-direction: column
+    padding: clamp(32px, 8vh, 64px) var(--login-space-lg) var(--login-space-2xl)
+
+  .login-card
+    width: 100%
+    max-width: 384px
+    padding: var(--login-space-lg)
+    border: 1px solid color-mix(in srgb, var(--color-border) 55%, var(--color-background-card))
+    border-radius: 8px
+    background: var(--color-background-card)
+    box-shadow: 0 8px 32px var(--login-accent-soft), 0 2px 8px rgba(10, 25, 60, 0.025)
+    overflow-wrap: anywhere
+
+    h1
+      margin: 0 0 4px
+      color: var(--color-text)
+      font-size: var(--font-size-2xl)
+      font-weight: var(--font-weight-normal)
+      line-height: 1.2
+
+  .login-subtitle
+    color: var(--color-text-muted)
+    font-size: var(--font-size-base)
+    line-height: 1.4
+
+  .login-form
+    margin-top: 20px
+
+  .login-field
+    margin-bottom: var(--login-space-md)
+
+    label
+      display: block
+      margin-bottom: 4px
+      color: var(--color-text)
+      font-size: var(--font-size-sm)
+      font-weight: var(--font-weight-medium)
+      line-height: 1.25
+
+  .login-input-wrap
+    position: relative
+
+  .login-field-icon
+    position: absolute
+    left: var(--login-space-sm)
+    top: 50%
+    transform: translateY(-50%)
+    width: var(--login-icon-size)
+    height: var(--login-icon-size)
+    color: var(--login-icon-color)
+    pointer-events: none
+
+  .login-card .form-input
+    display: block
+    box-sizing: border-box
+    width: 100%
+    height: var(--login-control-height)
+    padding: var(--login-space-xs) var(--login-space-sm) var(--login-space-xs) var(--login-space-2xl)
+    border: 1px solid var(--color-border)
+    border-radius: var(--login-control-radius)
+    background: var(--color-background-card)
+    color: var(--color-text)
+    font-family: inherit
+    font-size: var(--font-size-base)
+    line-height: 1.5
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast)
+
+    &:focus
+      border-color: var(--color-primary)
+      outline: 1px solid var(--color-primary)
+      outline-offset: 0
+      box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 16%, transparent)
+
+    &:-webkit-autofill
+      -webkit-text-fill-color: var(--color-text)
+      -webkit-box-shadow: 0 0 0 1000px var(--color-background-card) inset
+      caret-color: var(--color-text)
+
+  .login-card .form-input--password
+    padding-right: calc(var(--login-toggle-size) + var(--login-toggle-inset) + var(--login-space-xs))
+
+  .login-password-toggle
+    position: absolute
+    right: var(--login-toggle-inset)
+    top: 50%
+    transform: translateY(-50%)
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: var(--login-toggle-size)
+    height: var(--login-toggle-size)
+    padding: 0
+    border: 0
+    border-radius: var(--login-control-radius)
+    background: transparent
+    color: var(--login-icon-color)
+    cursor: pointer
+
+    &[hidden]
+      display: none
+
+    &:hover
+      color: var(--color-primary)
+      background: var(--login-accent-soft)
+
+    svg
+      width: var(--login-icon-size)
+      height: var(--login-icon-size)
+
+    .login-eye-slash
+      display: none
+
+    &[aria-pressed='true'] .login-eye-slash
+      display: block
+
+  .login-submit
+    position: relative
+    display: flex
+    align-items: center
+    justify-content: center
+    width: 100%
+    min-height: var(--login-control-height)
+    padding: var(--login-space-xs) var(--login-space-2xl)
+    border: 0
+    border-radius: var(--login-control-radius)
     background: var(--color-primary)
-    color: var(--color-background-card)
-    border: none
-    border-radius: var(--border-radius-sm)
+    color: var(--login-primary-text)
+    font-family: inherit
     font-size: var(--font-size-base)
     font-weight: var(--font-weight-medium)
+    line-height: 1.5
     cursor: pointer
     transition: background var(--transition-fast)
-    min-height: 44px
 
-  .login-btn:hover
-    background: #1557b0
-    box-shadow: var(--shadow-sm)
+    &:hover
+      background: var(--login-primary-hover)
 
-  .error
+    &:active
+      transform: translateY(1px)
+
+    &:disabled
+      opacity: 0.6
+      cursor: wait
+
+    svg
+      position: absolute
+      right: var(--login-space-sm)
+      width: var(--login-icon-size)
+      height: var(--login-icon-size)
+
+  .login-language:focus-visible, .login-password-toggle:focus-visible, .login-submit:focus-visible
+    outline: 2px solid var(--color-primary)
+    outline-offset: 3px
+
+  .login-error
     color: #b42318
-    margin-bottom: var(--space-sm)
-    text-align: left
+    font-size: var(--font-size-sm)
+    line-height: 1.5
+    margin-top: var(--login-space-md)
 
-  .version
-    margin-top: var(--space-sm)
+  .login-version
+    margin-top: var(--login-space-md)
     color: var(--color-text-muted)
     font-size: var(--font-size-xs)
-.login-container
-  .login-card
-    .locale-switch
-      - I18n.available_locales.each do |locale|
-        a.locale-link class=(locale == I18n.locale ? 'active' : '') href="/locale/#{locale}" = locale.to_s.upcase
+    line-height: 1.5
+    text-align: center
 
-    h1 = t('auth.login_title')
-    p.login-subtitle = t('auth.password_login_subtitle')
+  @media (max-width: 480px), (pointer: coarse)
+    .password-login-page
+      --login-control-height: 44px
+      --login-toggle-size: 44px
+      --login-toggle-inset: 0px
+
+  @media (max-width: 480px)
+    .login-header
+      width: calc(100% - 48px)
+      gap: var(--login-space-md)
+
+    .login-language
+      min-height: 44px
+      min-width: 44px
+
+    .login-languages
+      gap: var(--login-space-md)
+
+    .login-language + .login-language::before
+      left: -8px
+
+    .login-content
+      padding: var(--login-space-2xl) var(--login-space-md)
+
+header.login-header
+  .login-brand
+    - logo_url = @login_branding.logo_url(settings.public_folder)
+    - if logo_url
+      img.login-logo.login-logo--custom src=logo_url alt="" width="32" height="32"
+    - else
+      svg.login-logo viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+        rect x="0" y="0" width="8.5" height="8.5" rx="2"
+        rect x="11.5" y="0" width="8.5" height="8.5" rx="2"
+        rect x="0" y="11.5" width="8.5" height="8.5" rx="2"
+        rect x="11.5" y="11.5" width="8.5" height="8.5" rx="2"
+    span = @login_branding.app_name || t('auth.default_brand')
+  nav.login-languages aria-label=t('auth.language_label')
+    - I18n.available_locales.each do |locale|
+      a.login-language href=locale_url(locale, authorization_fields) lang=locale aria-current=('true' if locale == current_locale) = locale.to_s.upcase
+
+main.login-content
+  section.login-card aria-labelledby="login-title"
+    - title = @login_branding.app_name ? t('auth.branded_login_title', app: @login_branding.app_name) : t('auth.password_login_title')
+    h1#login-title = @login_branding.text('TITLE', current_locale, title)
+    p.login-subtitle = @login_branding.text('SUBTITLE', current_locale, t('auth.password_login_subtitle'))
 
     - if error
-      p.error = t('auth.invalid_credentials')
+      p.login-error#login-error role="alert" = t('auth.invalid_credentials')
 
-    form method="post" action=""
+    form.login-form method="post" action=""
       - authorization_fields.each do |name, value|
         input type="hidden" name=name value=value
-      .form-group
+      .login-field
         label for="username" = t('auth.username_label')
-        input.form-input#username type="text" name="username" required=true autofocus=true autocomplete="username"
-      .form-group
+        .login-input-wrap
+          svg.login-field-icon viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+            circle cx="12" cy="7" r="4"
+            path d="M4 21v-3a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v3"
+          input.form-input#username type="text" name="username" required=true autofocus=true autocomplete="username" autocapitalize="none" spellcheck="false" aria-invalid=('true' if error) aria-describedby=('login-error' if error)
+      .login-field
         label for="password" = t('auth.password_label')
-        input.form-input#password type="password" name="password" required=true autocomplete="current-password"
-      button.login-btn type="submit" = t('auth.password_login_button')
-  span.version = "Build v " + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
-    
+        .login-input-wrap
+          svg.login-field-icon viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+            rect x="4" y="10" width="16" height="12" rx="2"
+            path d="M7 10V6a5 5 0 0 1 10 0v4"
+            circle cx="12" cy="15" r="1"
+            path d="M12 16v2"
+          input.form-input.form-input--password#password type="password" name="password" required=true autocomplete="current-password" aria-invalid=('true' if error) aria-describedby=('login-error' if error)
+          button.login-password-toggle#password-toggle type="button" hidden=true aria-controls="password" aria-pressed="false" aria-label=t('auth.show_password') title=t('auth.show_password') data-show-label=t('auth.show_password') data-hide-label=t('auth.hide_password')
+            svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+              path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"
+              circle cx="12" cy="12" r="3"
+              path.login-eye-slash d="m3 3 18 18"
+      button.login-submit type="submit"
+        span = t('auth.password_login_button')
+        svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+          path d="M4 12h16m-7-7 7 7-7 7"
+  - if @login_branding.show_build?
+    p.login-version = "Build v " + (ENV['ORG_OPENCONTAINERS_IMAGE_VERSION'] || '0.0.0')
+
+javascript:
+  (() => {
+    const input = document.getElementById('password');
+    const toggle = document.getElementById('password-toggle');
+    toggle.hidden = false;
+    toggle.addEventListener('click', () => {
+      const visible = input.type === 'password';
+      input.type = visible ? 'text' : 'password';
+      toggle.setAttribute('aria-pressed', String(visible));
+      const label = visible ? toggle.dataset.hideLabel : toggle.dataset.showLabel;
+      toggle.setAttribute('aria-label', label);
+      toggle.title = label;
+    });
+  })();

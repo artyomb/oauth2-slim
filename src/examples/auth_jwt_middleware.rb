@@ -82,8 +82,6 @@ module OAuthSlim
           refresh
           return [@keys[kid], @snapshot_issuer] if @keys.key?(kid)
 
-          @negative.delete_if { |_, deadline| deadline <= now }
-          @negative.shift if @negative.size >= 128
           @negative[kid] = now + @refresh_interval
           raise Invalid, 'Unknown signing key'
         end

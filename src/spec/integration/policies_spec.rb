@@ -39,9 +39,9 @@ else
     set :sessions, { secret: 'policy-integration-secret-' * 4 }
     set :views, File.expand_path('../../views', __dir__)
     set :policy_repository, Authorization::PolicyRepository.new(DB)
+    register LocaleSupport
     helpers Token, AuthorizationCode, Auth20, DBUserAuth, Authorization::PolicyController
     helpers do
-      def t(key, **options) = I18n.t(key, **options)
       def valid_redirect_uri!(value) = URI.parse(value)
     end
   end
@@ -49,10 +49,8 @@ else
   class UnavailablePolicyApp < Sinatra::Base
     set :environment, :test
     set :views, File.expand_path('../../views', __dir__)
+    register LocaleSupport
     helpers Authorization::PolicyController
-    helpers do
-      def t(key, **options) = I18n.t(key, **options)
-    end
   end
 
   RSpec.describe 'PostgreSQL policy integration' do

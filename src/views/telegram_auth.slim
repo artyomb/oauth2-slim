@@ -99,7 +99,7 @@ sass:
   .login-card
     .locale-switch
       - I18n.available_locales.each do |locale|
-        a.locale-link class=(locale == I18n.locale ? 'active' : '') href="/locale/#{locale}" = locale.to_s.upcase
+        a.locale-link class=(locale == current_locale ? 'active' : '') href=locale_url(locale) = locale.to_s.upcase
 
     h1 = t('auth.login_title')
     / p = t('auth.login_subtitle')

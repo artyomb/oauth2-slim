@@ -1,9 +1,9 @@
 doctype html
-html
+html lang=current_locale
   head
     meta charset='utf-8'
     meta name='viewport' content='width=device-width, initial-scale=1'
-    title = t('app.title')
+    title = @login_branding&.app_name || t('app.title')
     link rel='preconnect' href='https://fonts.googleapis.com'
     link rel='preconnect' href='https://fonts.gstatic.com' crossorigin=true
     link href='https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap' rel='stylesheet'
@@ -623,7 +623,7 @@ html
       .mb-3
         margin-bottom: var(--space-xl)
 
-  body
+  body class=(['password-login-page', ('custom-palette' if @login_branding.primary_color)] if @login_branding) style=@login_branding&.style
     .app-container
       == yield if block_given?
 

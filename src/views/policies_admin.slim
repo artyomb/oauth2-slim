@@ -120,6 +120,6 @@ link rel="stylesheet" href="#{policy_path}/css/policies.css"
       button.btn.btn-primary#policy-confirm-yes type="button" = t('policy_admin.confirm')
       button.btn.btn-secondary#policy-confirm-no type="button" = t('policy_admin.cancel')
 
-  script#policy-translations type="application/json" == JSON.generate(I18n.t('policy_admin')).gsub('<', '\u003c')
+  script#policy-translations type="application/json" == JSON.generate(t('policy_admin')).gsub('<', '\u003c')
 script src="#{policy_path}/js/policy-json.js" defer=true
 script src="#{policy_path}/js/policies.js" defer=true
