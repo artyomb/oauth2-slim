@@ -186,16 +186,16 @@ sass:
     line-height: 1.5
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast)
 
-    &:focus
-      border-color: var(--color-primary)
-      outline: 1px solid var(--color-primary)
-      outline-offset: 0
-      box-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 16%, transparent)
-
     &:-webkit-autofill
       -webkit-text-fill-color: var(--color-text)
       -webkit-box-shadow: 0 0 0 1000px var(--color-background-card) inset
       caret-color: var(--color-text)
+
+    &:focus
+      border-color: var(--color-primary)
+      outline: 1px solid var(--color-primary)
+      outline-offset: 0
+      box-shadow: 0 0 0 1000px var(--color-background-card) inset, 0 0 12px color-mix(in srgb, var(--color-primary) 16%, transparent)
 
   .login-card .form-input--password
     padding-right: calc(var(--login-toggle-size) + var(--login-toggle-inset) + var(--login-space-xs))
