@@ -36,6 +36,7 @@ async function ui(intercept = () => undefined) {
   vm.runInNewContext(fs.readFileSync(require.resolve('../../public/js/policies.js'), 'utf8'), {
     document: { getElementById: get, createElement(tag) { const node = element(tag); created.push(node); return node; } },
     window: { addEventListener() {} }, URLSearchParams,
+    AdminUI: { texts: { more: 'More', results: 'Found {count} of {total}' }, icon: () => '', filters: (form, apply) => { form.applyFilters = apply; return {}; } },
     FormData: class {
       constructor(target) { this.target = target; }
       *[Symbol.iterator]() {
@@ -156,4 +157,17 @@ test('new policies save with a resource type and no fixed policy type', async ()
   assert.equal(body.resource_type, 'resource');
   assert.equal('type' in body, false);
   assert.equal(app.get('policy-message').textContent, 'saved');
+});
+
+test('pagination uses applied filters rather than an unsubmitted draft', async () => {
+  const app = await ui();
+  app.get('policy-filters').applyFilters({ search: 'saved', active: 'false' });
+  await tick();
+  app.get('policy-filters').elements = { search: { value: 'unsubmitted' } };
+  app.get('policy-next').onclick();
+  await tick();
+  const query = new URLSearchParams(app.requests.at(-1).url.split('?')[1]);
+  assert.equal(query.get('search'), 'saved');
+  assert.equal(query.get('active'), 'false');
+  assert.equal(query.get('offset'), '25');
 });

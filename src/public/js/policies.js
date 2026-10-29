@@ -8,7 +8,7 @@
   const api = root.dataset.api;
   const limit = 25;
   const fields = ['name', 'description', 'resource_type', 'actions', 'effect', 'priority', 'active', 'definition'];
-  const state = { policy: null, dirty: false, offset: 0, bindingOffset: 0, userOffset: 0, bindings: [], listRequest: 0, busy: false };
+  const state = { policy: null, dirty: false, offset: 0, bindingOffset: 0, userOffset: 0, bindings: [], listRequest: 0, busy: false, filters: {}, total: 0 };
   const text = (key, values = {}) => Object.entries(values).reduce((s, [k, v]) => s.replaceAll(`{${k}}`, v), texts[key] || key);
   const example = { example: { values: ['value'] } };
 
@@ -24,7 +24,7 @@
     return element;
   }
   function button(label, action) {
-    const element = node('button', label, 'btn btn-secondary btn-small');
+    const element = node('button', label, 'btn btn-quiet btn-small');
     element.type = 'button';
     element.addEventListener('click', () => run(action, element));
     return element;
@@ -52,7 +52,7 @@
     if (error.details?.code === 'stale_revision') $('policy-conflict').hidden = false;
     Object.entries(error.details?.fields || {}).forEach(([key, value]) => {
       const field = form.elements.namedItem(key);
-      if (field) field.setAttribute('aria-invalid', 'true');
+      if (field) { field.setAttribute('aria-invalid', 'true'); const advanced = field.closest('details'); if (advanced) advanced.open = true; }
       if ($(`error-${key}`)) $(`error-${key}`).textContent = value;
     });
   }
@@ -84,7 +84,7 @@
     } finally {
       controls.forEach((control, index) => { control.disabled = disabled[index]; });
       state.busy = false;
-      if (!$('policy-editor').hidden) form.elements.name.focus();
+      if (!$('policy-editor').hidden) form.elements.name.focus({ preventScroll: true });
     }
   }
   function dirty(value = true) {
@@ -104,7 +104,7 @@
   async function loadList() {
     const serial = ++state.listRequest;
     $('policy-list-state').textContent = text('loading');
-    const query = new URLSearchParams(new FormData($('policy-filters')));
+    const query = new URLSearchParams(state.filters);
     query.set('limit', limit); query.set('offset', state.offset);
     try {
       const page = await request(`${api}?${query}`);
@@ -112,15 +112,32 @@
       $('policy-rows').replaceChildren();
       page.data.forEach((policy) => {
         const row = node('tr');
-        const values = { name: policy.name, resource_type: policy.resource_type, actions: policy.actions.join(', '), effect: text(policy.effect), state: text(policy.active ? 'enabled' : 'disabled'), priority: policy.priority, assignments: policy.assignment_count, updated: new Date(policy.updated_at).toLocaleString() };
+        const values = { name: policy.name, resource_type: policy.resource_type, effect: text(policy.effect), state: text(policy.active ? 'enabled' : 'disabled'), assignments: policy.assignment_count };
         Object.entries(values).forEach(([key, value]) => {
           const cell = node('td'); cell.dataset.label = text(key);
-          if (key === 'effect' || key === 'state') cell.append(node('span', value, `policy-badge ${key === 'effect' ? policy.effect : ''}`));
-          else cell.textContent = value;
+          if (key === 'name') {
+            cell.className = 'admin-identity-cell';
+            const open = button(value, () => openPolicy(policy.id)); open.className = 'admin-identity';
+            cell.append(open);
+            if (policy.description) cell.append(node('div', policy.description, 'user-meta'));
+          } else if (key === 'resource_type') {
+            cell.className = 'admin-resource-cell';
+            const resource = node('div');
+            resource.append(node('code', value), node('div', policy.actions.join(', '), 'user-meta'));
+            cell.append(resource);
+          } else if (key === 'effect') cell.append(node('span', value, `policy-badge ${policy.effect}`));
+          else if (key === 'state') cell.append(node('span', value, `policy-state ${policy.active ? 'active' : ''}`));
+          else { cell.className = 'admin-number'; cell.append(button(String(value), () => openPolicy(policy.id))); }
           row.append(cell);
         });
-        const cell = node('td'); const actions = node('div', undefined, 'policy-row-actions');
-        actions.append(button(text('open'), () => openPolicy(policy.id)), button(text('duplicate'), () => duplicate(policy)), button(text(policy.active ? 'disable' : 'enable'), () => toggle(policy)));
+        const cell = node('td', undefined, 'admin-actions'); const actions = node('div', undefined, 'policy-row-actions');
+        actions.append(button(text('open'), () => openPolicy(policy.id)));
+        const menu = node('details', undefined, 'admin-menu');
+        const summary = node('summary'); summary.innerHTML = AdminUI.icon('more');
+        summary.setAttribute('aria-label', `${AdminUI.texts.more}: ${policy.name}`);
+        summary.title = AdminUI.texts.more;
+        const items = node('div', undefined, 'admin-menu-items');
+        items.append(button(text('duplicate'), () => duplicate(policy)), button(text(policy.active ? 'disable' : 'enable'), () => toggle(policy)));
         const remove = button(text('delete'), async () => {
           if (!await confirmAction(text('delete_confirm'))) return;
           await request(`${api}/${policy.id}`, 'DELETE', { expected_revision: policy.revision });
@@ -128,9 +145,18 @@
         });
         remove.disabled = policy.active || policy.assignment_count > 0;
         if (remove.disabled) remove.title = text('delete_blocked');
-        actions.append(remove); cell.append(actions); row.append(cell); $('policy-rows').append(row);
+        remove.className = 'btn btn-danger';
+        items.append(remove); menu.append(summary, items); actions.append(menu); cell.append(actions); row.append(cell); $('policy-rows').append(row);
       });
-      $('policy-list-state').textContent = page.total ? '' : text('empty');
+      const filtered = Object.values(state.filters).some(Boolean);
+      if (!filtered) state.total = page.total;
+      $('policy-total').textContent = state.total;
+      $('policy-list-state').textContent = AdminUI.texts.results.replace('{count}', page.total).replace('{total}', Math.max(state.total, page.total));
+      $('policy-table-wrap').hidden = page.total === 0;
+      $('policy-empty').hidden = page.total > 0;
+      $('policy-empty-title').textContent = AdminUI.texts[filtered ? 'no_results' : 'empty_policies'];
+      $('policy-empty-copy').textContent = AdminUI.texts[filtered ? 'no_results_hint' : 'empty_policies_hint'];
+      $('policy-pagination').hidden = page.total <= limit;
       pagination('policy', page);
     } catch (error) { if (serial === state.listRequest) $('policy-list-state').textContent = text('failure'); throw error; }
   }
@@ -145,7 +171,10 @@
       else field.value = policy[key] ?? '';
     });
     $('policy-editor-title').textContent = policy.id ? policy.name : text('new');
-    $('policy-revision').textContent = policy.id ? `${text('revision')} ${policy.revision} · ${new Date(policy.updated_at).toLocaleString()}` : '';
+    $('policy-revision').textContent = policy.id ? `${text('revision')} ${policy.revision} · ${new Date(policy.updated_at).toLocaleString()}` : AdminUI.texts.draft_hint;
+    $('policy-editor-state').textContent = text(policy.active ? 'enabled' : 'disabled');
+    $('policy-editor-state').className = `policy-state ${policy.active ? 'active' : ''}`;
+    $('policy-list-heading').hidden = true;
     $('policy-list').hidden = true; $('policy-editor').hidden = false;
     $('policy-assignments').hidden = !policy.id;
     $('policy-bindings').replaceChildren(); $('policy-user-results').replaceChildren();
@@ -266,7 +295,7 @@
     fill({ name: '', description: '', resource_type: 'resource', actions: ['read'], effect: 'allow', active: false, priority: 0, schema_version: 1, definition: {} }); message();
   }, true));
   $('policy-back').onclick = () => run(() => edit(async () => {
-    dirty(false); $('policy-editor').hidden = true; $('policy-list').hidden = false; message(); await loadList();
+    dirty(false); $('policy-editor').hidden = true; $('policy-list').hidden = false; $('policy-list-heading').hidden = false; message(); await loadList();
   }, true));
   $('policy-reload').onclick = () => run(() => openPolicy(state.policy.id));
   $('policy-format').onclick = () => run(async () => { form.elements.definition.value = JSON.stringify(definition(), null, 2); dirty(); });
@@ -274,7 +303,10 @@
     if (!await confirmAction(text('example_confirm'))) return;
     form.elements.definition.value = JSON.stringify(example, null, 2); dirty(); definition();
   });
-  $('policy-filters').onsubmit = (event) => { event.preventDefault(); state.offset = 0; run(loadList); };
+  $('policy-cancel').onclick = () => $('policy-back').onclick();
+  state.filters = AdminUI.filters($('policy-filters'), (values) => {
+    state.filters = values; state.offset = 0; run(loadList);
+  });
   $('policy-user-search').onsubmit = (event) => { event.preventDefault(); state.userOffset = 0; run(searchUsers); };
   [['policy', 'offset', loadList], ['binding', 'bindingOffset', loadBindings], ['user', 'userOffset', searchUsers]].forEach(([prefix, key, loader]) => {
     $(prefix + '-prev').onclick = () => { state[key] = Math.max(0, state[key] - limit); run(loader); };

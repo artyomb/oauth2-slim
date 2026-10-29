@@ -1,3 +1,74 @@
-nav.admin-navigation aria-label=t('policy_admin.navigation')
-  a.btn.btn-secondary href="#{request.script_name}#{DB_USER_ADMIN_PATH}" aria-current=(request.path_info == DB_USER_ADMIN_PATH ? 'page' : nil) = t('user_admin.user_list')
-  a.btn.btn-secondary href=policy_path aria-current=(request.path_info == Authorization::PolicyController::ADMIN_PATH ? 'page' : nil) = t('policy_admin.title')
+link rel="stylesheet" href="#{policy_path}/css/policies.css?v=2"
+svg.admin-icons aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+  symbol#admin-plus viewBox="0 0 16 16"
+    path d="M8 3v10M3 8h10"
+  symbol#admin-close viewBox="0 0 16 16"
+    path d="m4 4 8 8M12 4l-8 8"
+  symbol#admin-more viewBox="0 0 16 16"
+    circle cx="3" cy="8" r=".7"
+    circle cx="8" cy="8" r=".7"
+    circle cx="13" cy="8" r=".7"
+  symbol#admin-filter viewBox="0 0 16 16"
+    path d="M2 4h12M4 8h8M6 12h4"
+header.admin-header
+  .admin-header-inner
+    a.admin-brand href="#{request.script_name}#{DB_USER_ADMIN_PATH}" Auth Slim
+    span.admin-area = t('policy_admin.navigation')
+    nav.admin-navigation aria-label=t('policy_admin.navigation')
+      a href="#{request.script_name}#{DB_USER_ADMIN_PATH}" aria-current=(request.path_info == DB_USER_ADMIN_PATH ? 'page' : nil) = t('user_admin.user_list')
+      a href=policy_path aria-current=(request.path_info == Authorization::PolicyController::ADMIN_PATH ? 'page' : nil) = t('policy_admin.title')
+script#admin-translations type="application/json" == JSON.generate(t('admin_ui')).gsub('<', '\u003c')
+javascript:
+  window.AdminUI = {
+    texts: JSON.parse(document.getElementById('admin-translations').textContent),
+    icon(name) { return `<svg class="admin-icon" aria-hidden="true"><use href="#admin-${name}"/></svg>`; },
+    filters(form, apply) {
+      const toggle = document.getElementById('admin-filter-toggle');
+      const chips = document.getElementById('admin-active-filters');
+      const reset = document.getElementById('admin-filter-reset');
+      const pending = document.getElementById('admin-filter-pending');
+      let values = Object.fromEntries(new FormData(form));
+      const render = () => {
+        const active = Object.entries(values).filter(([, value]) => value !== '');
+        toggle.innerHTML = this.icon('filter');
+        toggle.append(document.createTextNode(this.texts.filters + (active.length ? ` · ${active.length}` : '')));
+        chips.replaceChildren();
+        active.forEach(([key, value]) => {
+          const field = form.elements.namedItem(key);
+          const label = field.closest('label').querySelector('span').textContent;
+          const chip = document.createElement('button');
+          chip.type = 'button'; chip.className = 'admin-filter-chip';
+          const option = field.tagName === 'SELECT' ? [...field.options].find(item => item.value === value) : null;
+          const caption = `${label}: ${option ? option.textContent : value}`;
+          chip.textContent = caption;
+          chip.insertAdjacentHTML('beforeend', this.icon('close'));
+          chip.setAttribute('aria-label', `${this.texts.remove_filter} ${caption}`);
+          chip.onclick = () => { values[key] = ''; field.value = ''; render(); apply({ ...values }); };
+          chips.append(chip);
+        });
+        reset.hidden = !active.length;
+        pending.hidden = [...new FormData(form)].every(([key, value]) => value === values[key]);
+      };
+      toggle.onclick = () => {
+        const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', String(expanded));
+        form.classList.toggle('is-expanded', expanded);
+      };
+      reset.onclick = () => {
+        form.reset(); values = Object.fromEntries(new FormData(form)); render(); apply({ ...values });
+      };
+      form.addEventListener('input', () => {
+        pending.hidden = [...new FormData(form)].every(([key, value]) => value === values[key]);
+      });
+      form.addEventListener('submit', (event) => {
+        event.preventDefault(); values = Object.fromEntries(new FormData(form)); render(); apply({ ...values });
+      });
+      render();
+      return values;
+    }
+  };
+  document.addEventListener('click', (event) => {
+    document.querySelectorAll('.admin-menu[open]').forEach(menu => {
+      if (!menu.contains(event.target) || event.target.closest('button')) menu.open = false;
+    });
+  });
