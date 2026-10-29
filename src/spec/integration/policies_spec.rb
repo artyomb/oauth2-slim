@@ -447,7 +447,7 @@ else
       expect(page.status).to eq(200), page.body
       expect(page.body).to include('policy-form', 'policy-bindings', 'policy-translations')
       csrf = page.body[/data-csrf="([^"]+)"/, 1]
-      session_cookie = Array(page['set-cookie']).find { |value| value.start_with?('rack.session=') }.split(';').first
+      session_cookie = Array(page['set-cookie']).find { |value| value.start_with?("#{PolicyIntegrationApp.sessions.fetch(:key)}=") }.split(';').first
       headers = { 'HTTP_COOKIE' => "#{cookie}; #{session_cookie}" }
       [api, "#{admin_path}/data"].each do |path|
         expect(call('POST', path, attributes, as: nil, headers:).status).to eq(403)
@@ -513,6 +513,23 @@ else
       exchanged = request.post('/token', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded', input: URI.encode_www_form(code:))
       claims = JWT.decode(body(exchanged)['access_token'], SIGNING_KEY.verify_key, true, algorithm: 'EdDSA').first
       expect(claims).to include('uid' => @alice, 'sub' => @alice.to_s)
+    end
+
+    it 'preserves another service authentication cookie when displaying or submitting the login form' do
+      stub_const('COOKIE_TOKEN_NAME', 'map_auth')
+      path = '/authorize?redirect_uri=https%3A%2F%2Fapp.test%2Fcallback'
+      headers = { 'HTTP_COOKIE' => 'auth_token=other-service', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded' }
+      DB[:oauth_users].where(id: @alice).update(password_hash: Sequel.lit("crypt(?, gen_salt('bf', 10))", 'test-password'))
+      responses = [
+        request.get(path, headers),
+        request.post(path, headers.merge(input: 'login=alice&password=incorrect')),
+        request.post(path, headers.merge(input: 'login=alice&password=test-password'))
+      ]
+
+      expect(responses.map(&:status)).to eq([200, 200, 303])
+      responses.each do |response|
+        expect(Array(response['set-cookie']).grep(/\Aauth_token=/)).to be_empty
+      end
     end
 
     it 'does not let a demoted administrator use the existing user admin to restore privileges' do

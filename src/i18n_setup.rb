@@ -12,16 +12,15 @@ module LocaleSupport
     options = app.sessions.respond_to?(:to_hash) ? app.sessions.to_hash.dup : {}
     secret = ENV['SESSION_SECRET']
     cookie_name = ENV['SESSION_COOKIE_NAME']
+    cookie_name = "#{ENV.fetch('COOKIE_TOKEN_NAME', 'auth_token')}.session" if cookie_name.to_s.empty?
     unless secret.to_s.empty?
       raise ArgumentError, 'SESSION_SECRET must contain at least 64 bytes' if secret.bytesize < 64
 
       options[:secret] = secret
     end
-    unless cookie_name.to_s.empty?
-      raise ArgumentError, 'SESSION_COOKIE_NAME must contain only letters, digits, dots, underscores or hyphens' unless cookie_name.match?(/\A[a-zA-Z0-9_.-]+\z/)
+    raise ArgumentError, 'SESSION_COOKIE_NAME must contain only letters, digits, dots, underscores or hyphens' unless cookie_name.match?(/\A[a-zA-Z0-9_.-]+\z/)
 
-      options[:key] = cookie_name
-    end
+    options[:key] = cookie_name
 
     app.set :sessions, options
     app.helpers self

@@ -227,7 +227,6 @@ module DBUserAuth
 
       get(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         context = users_auth_context
-        clear_legacy_tokens
 
         if (user = current_auth_user)
           redirect_with_authorization_code(
@@ -240,7 +239,6 @@ module DBUserAuth
 
       post(/.*#{FORWARD_OAUTH_AUTH_URL}/) do
         context = users_auth_context
-        clear_legacy_tokens
 
         login = (params[:login] || params[:username]).to_s.strip
         password = params[:password].to_s

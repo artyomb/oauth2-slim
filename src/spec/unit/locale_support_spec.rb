@@ -11,6 +11,8 @@ RSpec.describe LocaleSupport do
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with('SESSION_SECRET').and_return(nil)
     allow(ENV).to receive(:[]).with('SESSION_COOKIE_NAME').and_return(nil)
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('COOKIE_TOKEN_NAME', 'auth_token').and_return('auth_token')
   end
 
   it 'prefers explicit selection, then the saved preference, then the deployment default' do
@@ -66,6 +68,21 @@ RSpec.describe LocaleSupport do
     selected = first.get('/?locale=ru')
     expect(cookie(selected)).to start_with('opt.locale_session=')
     expect(second.get('/', 'HTTP_COOKIE' => cookie(selected)).body).to eq('ru')
+  end
+
+  it 'derives distinct session cookies from each deployment token cookie name' do
+    main = Rack::MockRequest.new(build_app)
+    allow(ENV).to receive(:fetch).with('COOKIE_TOKEN_NAME', 'auth_token').and_return('map_auth')
+    map = Rack::MockRequest.new(build_app)
+
+    main_locale = main.get('/?locale=ru')
+    map_locale = map.get('/?locale=en', 'HTTP_COOKIE' => cookie(main_locale))
+    expect(cookie(main_locale)).to start_with('auth_token.session=')
+    expect(cookie(map_locale)).to start_with('map_auth.session=')
+
+    cookies = [cookie(main_locale), cookie(map_locale), 'auth_token=main-token', 'map_auth=map-token'].join('; ')
+    expect(main.get('/', 'HTTP_COOKIE' => cookies).body).to eq('ru')
+    expect(map.get('/', 'HTTP_COOKIE' => cookies).body).to eq('en')
   end
 
   it 'isolates deployments on the same hostname using distinct cookie names' do

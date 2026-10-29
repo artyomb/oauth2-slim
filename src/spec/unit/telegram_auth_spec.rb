@@ -451,6 +451,15 @@ RSpec.describe TelegramAuth do
   end
 
   describe "GET /oauth2/sign_out" do
+    it "clears only its own configured authentication cookie" do
+      stub_const('COOKIE_TOKEN_NAME', 'map_auth')
+      response = request.get('/oauth2/sign_out', 'HTTP_COOKIE' => 'auth_token=other-service; map_auth=this-service')
+
+      expect(response.status).to eq(302)
+      expect(auth_cookie_value(response)).to eq('')
+      expect(Array(response['set-cookie']).grep(/\Aauth_token=/)).to be_empty
+    end
+
     it "clears authentication and follows the configured issuer logout URL" do
       logout_url = "#{ENV.fetch('OIDC_ISSUER')}/logout"
       response = request.get(
