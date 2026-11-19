@@ -117,6 +117,46 @@ RSpec.describe AuthorizationCode do
     expect(JSON.parse(response.body)).not_to have_key('id_token')
   end
 
+  it 'publishes only the public signing key at root and under the OAuth prefix' do
+    path = '/.well-known/jwks.json'
+    response = request.get(path)
+
+    expect(response.status).to eq(200)
+    expect(response['content-type']).to eq('application/jwk-set+json')
+    expect(response['cache-control']).to include('public', 'max-age=30')
+    keys = JSON.parse(response.body).fetch('keys')
+    expect(keys.size).to eq(1)
+    key = keys.first
+    expect(key.keys).to contain_exactly('kty', 'crv', 'x', 'alg', 'use', 'kid')
+    expect(key).to include('kty' => 'OKP', 'crv' => 'Ed25519', 'alg' => 'EdDSA', 'use' => 'sig')
+    expect(request.get("/oauth_slim#{path}").body).to eq(response.body)
+    expect(request.get(path, 'HTTP_IF_NONE_MATCH' => response['etag']).status).to eq(304)
+  end
+
+  it 'verifies the issued access token and auth cookie with the published JWKS' do
+    response = exchange_code(issue_code(requested_scope: 'profile'), client_id: 'test-client')
+    token_response = JSON.parse(response.body)
+    expect(token_response.fetch('token_algorithm')).to eq('EdDSA')
+    cookie = Rack::Utils.parse_cookies_header(response['set-cookie']).fetch(COOKIE_TOKEN_NAME)
+    jwks = JSON.parse(request.get('/.well-known/jwks.json').body)
+
+    [token_response.fetch('access_token'), cookie].each do |token|
+      claims, header = JWT.decode(token, nil, true, algorithm: 'EdDSA', jwks:)
+      expect(header.fetch('kid')).to eq(jwks.fetch('keys').first.fetch('kid'))
+      expect(claims.fetch('sub')).to eq('42')
+    end
+  end
+
+  it 'publishes the key needed to verify previously issued tokens without a kid' do
+    token = JWT.encode({ sub: '42', exp: Time.now.to_i + 60 }, SIGNING_KEY, 'EdDSA')
+    jwks = JSON.parse(request.get('/.well-known/jwks.json').body)
+
+    claims, header = JWT.decode(token, nil, true, algorithm: 'EdDSA', jwks:, allow_nil_kid: true)
+
+    expect(header).not_to have_key('kid')
+    expect(claims.fetch('sub')).to eq('42')
+  end
+
   it 'mirrors the assigned role and issues a unique token ID' do
     first = access_claims(exchange_code(issue_code(role: 'admin'), client_id: 'ceph-dashboard'))
     second = access_claims(exchange_code(issue_code(role: 'admin'), client_id: 'ceph-dashboard'))

@@ -83,6 +83,21 @@ to 3600 seconds. Registered-client validation is not implemented yet; the
 configured secret currently signs ID tokens but is not used to authenticate
 the token request.
 
+### Public keys for access and session tokens
+
+`GET /.well-known/jwks.json` returns the public Ed25519 key for the `access_token`
+from `/token` and the `auth_token` cookie. It requires no credentials and works
+under the same path prefix as `/token`, for example
+`https://auth.example.com/oauth_slim/.well-known/jwks.json`. Forward that path
+through the public ingress with HTTPS.
+
+Use a trusted, configured JWKS URL and verify `alg=EdDSA`, the expected `iss`,
+and `exp`. Select the key by the JWT header's `kid`. For older tokens without
+`kid`, use the single published key. Preserve the existing `/private_keys/signing_key`
+across production redeployments so previously issued tokens still verify.
+OIDC `id_token` uses `OIDC_CLIENT_SECRET`. Request assertions use
+[their own JWKS](docs/auth-jwt.md).
+
 # Client configuration example
 Grafana docker image configuration example using environment variables
 ```ruby

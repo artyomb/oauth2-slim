@@ -1,6 +1,9 @@
+require 'digest'
+require 'json'
 require_relative 'ajax'
 require_relative 'authorization_code'
 require_relative 'log_safety'
+require_relative 'token'
 
 module Auth20
   def self.included(base)
@@ -93,11 +96,19 @@ module Auth20
           'id_token': id_token,
           'token_type': 'Bearer',
           "token_format": 'jwt',
-          "token_algorithm": 'RS256',
+          "token_algorithm": Token::SIGNING_ALGORITHM,
           'expires_in': 3600,
           'refresh_token': 'refresh_token',
           'scope': grant[:requested_scope] || 'allowed_scopes'
         }.compact.to_json
+      end
+
+      get %r{.*/\.well-known/jwks\.json} do
+        body = JSON.generate(keys: [Token::PUBLIC_JWK])
+        content_type 'application/jwk-set+json'
+        cache_control :public, max_age: 30, must_revalidate: true
+        etag Digest::SHA256.hexdigest(body)
+        body
       end
 
       get %r{.*/user} do

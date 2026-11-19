@@ -1,3 +1,4 @@
+require 'digest'
 require 'ed25519'
 require 'jwt'
 require 'jwt/eddsa'
@@ -19,6 +20,11 @@ else
 end
 
 module Token
+  SIGNING_ALGORITHM = 'EdDSA'.freeze
+  public_key = SIGNING_KEY.verify_key
+  PUBLIC_JWK = JWT::JWK.new(public_key, {
+    alg: SIGNING_ALGORITHM, use: 'sig', kid: Digest::SHA256.hexdigest(public_key.to_bytes)
+  }).export.freeze
 
   def get_token = request.cookies[COOKIE_TOKEN_NAME]
 
@@ -47,15 +53,14 @@ module Token
     data[:jti] = SecureRandom.uuid
     data[:iat] = now
     data[:exp] = now + 12 * 3600
-    # TODO: use alg: 'EdDSA' ED25519 is an EdDSA (Edwards-curve DSA) signature scheme. See also RFC8037 and RFC8032. )
-    access_token = JWT.encode(data, SIGNING_KEY, 'EdDSA')
+    access_token = JWT.encode(data, SIGNING_KEY, SIGNING_ALGORITHM, kid: PUBLIC_JWK.fetch(:kid))
     response.set_cookie(COOKIE_TOKEN_NAME, value: access_token, path: '/', expires: Time.now + 12 * 3600, httponly: true)
     LOGGER.debug 'New token issued'
     access_token
   end
 
   def decode_token(token)
-    JWT.decode(token, SIGNING_KEY.verify_key, true, { algorithm: 'EdDSA' }).first
+    JWT.decode(token, SIGNING_KEY.verify_key, true, algorithm: SIGNING_ALGORITHM).first
   end
 
   def valid_token?(token = get_token)
